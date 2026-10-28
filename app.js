@@ -155,7 +155,8 @@
     const visibleImages = [...document.querySelectorAll('[data-image-select]')];
     const selectedVisible = visibleImages.filter(el => selectedImages.has(el.dataset.imageSelect)).length;
     $('selectedCount').textContent = selectedImages.size + ' image' + (selectedImages.size === 1 ? '' : 's') + ' selected';
-    $('bulkBar').classList.toggle('hidden', selectedImages.size === 0);
+    const totalImages = files.filter(isImage).length;
+    $('bulkBar').classList.toggle('hidden', totalImages === 0);
     $('downloadSelected').disabled = selectedImages.size === 0;
     $('deleteSelected').disabled = selectedImages.size === 0;
     $('selectVisible').checked = visibleImages.length > 0 && selectedVisible === visibleImages.length;
@@ -172,23 +173,60 @@
     return '<div class="row"><div class="filename">' + (isImage(file) ? '<input class="image-select" type="checkbox" data-image-select="' + file.id + '" aria-label="Select image ' + escapeHTML(file.name) + '" ' + (selectedImages.has(file.id) ? 'checked' : '') + '>' : '') + '<div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div>';
   }
 
+  function setUploadProgress(visible, status = '', detail = '', percent = 0) {
+    const panel = $('uploadProgress');
+    panel.classList.toggle('hidden', !visible);
+    $('uploadStatus').textContent = status;
+    $('uploadDetail').textContent = detail;
+    const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+    $('uploadPercent').textContent = Math.round(safePercent) + '%';
+    $('uploadProgressFill').style.width = safePercent + '%';
+    $('upload').disabled = visible;
+    $('browse').disabled = visible;
+  }
+
   async function uploadFiles(fileList) {
     if (!user) return;
     const selected = [...fileList];
     if (!selected.length) return;
-    for (const file of selected) {
-      if (file.size > MAX_FILE) { toast(file.name + ' is larger than 50 MB.', true); continue; }
-      const clean = file.name.normalize('NFKC').replace(/[^a-zA-Z0-9._ -]/g, '_').replace(/\s+/g, '_').slice(0,180) || 'document';
-      const path = user.id + '/' + crypto.randomUUID() + '-' + clean;
-      try {
-        const { error: uploadError } = await db.storage.from(BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type || 'application/octet-stream' });
-        if (uploadError) throw uploadError;
-        const { error: insertError } = await db.from('jvault_files').insert({ owner_id:user.id, name:file.name, storage_path:path, size_bytes:file.size, mime_type:file.type || 'application/octet-stream', category:'Uncategorized' });
-        if (insertError) { await db.storage.from(BUCKET).remove([path]); throw insertError; }
-        toast('Uploaded ' + file.name);
-      } catch (error) { toast('Upload failed: ' + error.message, true); }
+    const valid = selected.filter(file => file.size <= MAX_FILE);
+    const oversized = selected.length - valid.length;
+    if (oversized) toast(oversized + ' file' + (oversized === 1 ? ' was' : 's were') + ' skipped because the limit is 50 MB per file.', true);
+    if (!valid.length) { $('picker').value = ''; return; }
+
+    let completed = 0, succeeded = 0, failed = 0;
+    setUploadProgress(true, 'Uploading your files…', 'Starting upload 1 of ' + valid.length, 0);
+    $('drop').classList.add('uploading');
+    try {
+      for (let index = 0; index < valid.length; index++) {
+        const file = valid[index];
+        const base = index / valid.length * 100;
+        setUploadProgress(true, 'Uploading your files…', 'File ' + (index + 1) + ' of ' + valid.length + ': ' + file.name, base);
+        const clean = file.name.normalize('NFKC').replace(/[^a-zA-Z0-9._ -]/g, '_').replace(/\s+/g, '_').slice(0,180) || 'document';
+        const path = user.id + '/' + crypto.randomUUID() + '-' + clean;
+        try {
+          const { error: uploadError } = await db.storage.from(BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type || 'application/octet-stream' });
+          if (uploadError) throw uploadError;
+          const { error: insertError } = await db.from('jvault_files').insert({ owner_id:user.id, name:file.name, storage_path:path, size_bytes:file.size, mime_type:file.type || 'application/octet-stream', category:'Uncategorized' });
+          if (insertError) { await db.storage.from(BUCKET).remove([path]); throw insertError; }
+          succeeded++;
+        } catch (error) {
+          failed++;
+          toast('Upload failed for ' + file.name + ': ' + error.message, true);
+        }
+        completed++;
+        setUploadProgress(true, failed ? 'Uploading files…' : 'Uploading your files…', completed + ' of ' + valid.length + ' processed', completed / valid.length * 100);
+      }
+      setUploadProgress(true, 'Finishing up…', 'Refreshing your vault', 100);
+      await loadFiles();
+      if (succeeded && !failed) toast(succeeded + ' file' + (succeeded === 1 ? '' : 's') + ' uploaded successfully.');
+      else if (succeeded && failed) toast(succeeded + ' uploaded, ' + failed + ' failed.', true);
+      else if (!succeeded) toast('No files were uploaded successfully.', true);
+    } finally {
+      $('picker').value = '';
+      $('drop').classList.remove('uploading');
+      setUploadProgress(false);
     }
-    $('picker').value = ''; await loadFiles();
   }
   $('upload').addEventListener('click', () => $('picker').click());
   $('browse').addEventListener('click', () => $('picker').click());
