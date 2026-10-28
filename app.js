@@ -115,11 +115,16 @@
     try {
       const { data, error } = await db.from('jvault_files').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      files = data || [];\n      const validIds = new Set(files.filter(isImage).map(f => f.id));\n      selectedImages.forEach(id => { if (!validIds.has(id)) selectedImages.delete(id); });\n      renderFiles();
+      files = data || [];
+      const validIds = new Set(files.filter(isImage).map(f => f.id));
+      selectedImages.forEach(id => { if (!validIds.has(id)) selectedImages.delete(id); });
+      renderFiles();
     } catch (error) { toast('Could not load files: ' + error.message, true); }
     finally { loading = false; $('list').classList.remove('loading'); }
   }
-  function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }\n\n  function renderFiles() {
+  function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }
+
+  function renderFiles() {
     const query = $('search').value.trim().toLowerCase();
     const previousCategory = $('filter').value;
     const categories = [...new Set(files.map(f => f.category || 'Uncategorized'))].sort((a,b) => a.localeCompare(b));
@@ -295,7 +300,8 @@
     } catch (error) { toast('Could not prepare ZIP: ' + (error.message || 'Please try again.'), true); }
     finally { button.textContent = 'Download selected'; button.disabled = false; }
   });
-\n  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+
+  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
     document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item === button));
     view = button.dataset.view; renderFiles();
   }));
