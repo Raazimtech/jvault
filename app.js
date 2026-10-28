@@ -151,6 +151,17 @@
     }
     updateBulkUI();
   }
+  function updateBulkUI() {
+    const visibleImages = [...document.querySelectorAll('[data-image-select]')];
+    const selectedVisible = visibleImages.filter(el => selectedImages.has(el.dataset.imageSelect)).length;
+    $('selectedCount').textContent = selectedImages.size + ' image' + (selectedImages.size === 1 ? '' : 's') + ' selected';
+    $('bulkBar').classList.toggle('hidden', selectedImages.size === 0);
+    $('downloadSelected').disabled = selectedImages.size === 0;
+    $('deleteSelected').disabled = selectedImages.size === 0;
+    $('selectVisible').checked = visibleImages.length > 0 && selectedVisible === visibleImages.length;
+    $('selectVisible').disabled = visibleImages.length === 0;
+    $('deleteAll').disabled = files.length === 0;
+  }
   function renderEmpty(items) {
     $('list').innerHTML = '<div class="empty"><strong>' + (files.length ? 'No matching documents' : 'Your vault is ready') + '</strong><p>' + (files.length ? 'Try another search or filter.' : 'Upload your first document to get started.') + '</p></div>';
   }
