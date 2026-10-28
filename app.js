@@ -266,6 +266,11 @@
     } finally { button.disabled = false; updateBulkUI(); }
   }
 
+  $('selectAllImages').addEventListener('click', () => {
+    files.filter(isImage).forEach(file => selectedImages.add(file.id));
+    renderFiles();
+    toast('Selected all ' + files.filter(isImage).length + ' images.');
+  });
   $('selectVisible').addEventListener('change', () => {
     document.querySelectorAll('[data-image-select]').forEach(el => {
       if ($('selectVisible').checked) selectedImages.add(el.dataset.imageSelect);
