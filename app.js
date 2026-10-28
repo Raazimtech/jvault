@@ -142,13 +142,14 @@
     if ($('sort').value === 'size') items.sort((a,b) => Number(b.size_bytes) - Number(a.size_bytes));
     $('filesTitle').textContent = view === 'recent' ? 'Recently added' : view === 'categories' ? 'Browse by category' : 'Your documents';
     if (view === 'categories') {
-      if (!items.length) return renderEmpty(items);
+      if (!items.length) { renderEmpty(items); updateBulkUI(); return; }
       const groups = categories.map(category => ({ category, rows: items.filter(f => (f.category || 'Uncategorized') === category) })).filter(g => g.rows.length);
       $('list').innerHTML = groups.map(group => '<div class="category-group"><div class="category-group-heading">' + escapeHTML(group.category) + '<span>' + group.rows.length + '</span></div>' + group.rows.map(fileRow).join('') + '</div>').join('');
     } else {
-      if (!items.length) return renderEmpty(items);
+      if (!items.length) { renderEmpty(items); updateBulkUI(); return; }
       $('list').innerHTML = '<div class="thead"><span>Document</span><span>Category</span><span>Added</span><span style="text-align:right">Actions</span></div>' + items.map(fileRow).join('');
     }
+    updateBulkUI();
   }
   function renderEmpty(items) {
     $('list').innerHTML = '<div class="empty"><strong>' + (files.length ? 'No matching documents' : 'Your vault is ready') + '</strong><p>' + (files.length ? 'Try another search or filter.' : 'Upload your first document to get started.') + '</p></div>';
