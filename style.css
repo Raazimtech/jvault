@@ -214,3 +214,14 @@ html,body{background:var(--bg);color:var(--ink)}body{font-family:"DM Sans",Inter
 .text-btn{border:0;background:transparent;color:#6d8399;font-size:10px;font-weight:700;cursor:pointer;padding:8px}
 .image-select{margin-right:1px}
 @media(max-width:760px){.bulk-bar{align-items:flex-start;padding:11px;gap:9px}.bulk-bar>span{align-self:center}.bulk-actions{width:100%;margin-left:0}.bulk-actions button{flex:1}.toolbar #deleteAll{grid-column:1/-1;width:100%}}
+
+
+/* Upload feedback: visible progress while files are being stored */
+.upload-progress{margin:12px 0 20px;padding:14px 16px;border:1px solid #dce8f5;border-radius:12px;background:#fff}
+.upload-progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:700;color:#233c56}
+.upload-progress-top strong{color:#1479ef;font-variant-numeric:tabular-nums}
+.upload-progress-track{height:7px;margin-top:11px;background:#e8f1fa;border-radius:99px;overflow:hidden}
+.upload-progress-fill{height:100%;width:0;background:#1479ef;border-radius:99px;transition:width .2s ease}
+.upload-detail{margin-top:8px;font-size:11px;color:#607b96;overflow-wrap:anywhere}
+.dropzone.uploading{border-color:#8bbff1;background:#f4f9ff}
+.upload-progress.hidden{display:none}
