@@ -10,6 +10,7 @@
   });
   const $ = id => document.getElementById(id);
   let user = null, profile = null, files = [], view = 'all', toastTimer, loading = false;
+  const selectedImages = new Set();
   $('year').textContent = new Date().getFullYear();
 
   function escapeHTML(value) {
@@ -114,11 +115,11 @@
     try {
       const { data, error } = await db.from('jvault_files').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      files = data || []; renderFiles();
+      files = data || [];\n      const validIds = new Set(files.filter(isImage).map(f => f.id));\n      selectedImages.forEach(id => { if (!validIds.has(id)) selectedImages.delete(id); });\n      renderFiles();
     } catch (error) { toast('Could not load files: ' + error.message, true); }
     finally { loading = false; $('list').classList.remove('loading'); }
   }
-  function renderFiles() {
+  function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }\n\n  function renderFiles() {
     const query = $('search').value.trim().toLowerCase();
     const previousCategory = $('filter').value;
     const categories = [...new Set(files.map(f => f.category || 'Uncategorized'))].sort((a,b) => a.localeCompare(b));
@@ -151,7 +152,7 @@
     const ext = (file.name.split('.').pop() || 'FILE').slice(0,4).toUpperCase();
     const date = new Date(file.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const cats = ['Uncategorized','Documents','Work','Personal','Finance','Education','Images','Other', ...files.map(f => f.category || 'Uncategorized')].filter((v,i,a) => a.indexOf(v) === i).sort();
-    return '<div class="row"><div class="filename"><div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div>';
+    return '<div class="row"><div class="filename">' + (isImage(file) ? '<input class="image-select" type="checkbox" data-image-select="' + file.id + '" aria-label="Select image ' + escapeHTML(file.name) + '" ' + (selectedImages.has(file.id) ? 'checked' : '') + '>' : '') + '<div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div>';
   }
 
   async function uploadFiles(fileList) {
@@ -221,7 +222,80 @@
     finally { button.disabled = false; }
   });
 
-  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+
+  async function deleteFilesBatch(targetFiles, doubleConfirm = false) {
+    if (!targetFiles.length || !user) return;
+    if (doubleConfirm) {
+      if (!confirm('DELETE ALL ' + targetFiles.length + ' FILES? This will permanently remove every file in your vault.')) return;
+      if (!confirm('FINAL WARNING: this cannot be undone. Permanently delete all ' + targetFiles.length + ' files now?')) return;
+    } else if (!confirm('Permanently delete ' + targetFiles.length + ' selected image(s)? This cannot be undone.')) return;
+    const button = doubleConfirm ? $('deleteAll') : $('deleteSelected');
+    button.disabled = true;
+    try {
+      const paths = targetFiles.map(f => f.storage_path);
+      for (let i = 0; i < paths.length; i += 100) {
+        const { error } = await db.storage.from(BUCKET).remove(paths.slice(i, i + 100));
+        if (error) throw error;
+      }
+      const ids = targetFiles.map(f => f.id);
+      const { error: dbError } = await db.from('jvault_files').delete().eq('owner_id', user.id).in('id', ids);
+      if (dbError) throw dbError;
+      ids.forEach(id => selectedImages.delete(id));
+      toast(doubleConfirm ? 'All vault files deleted.' : 'Selected images deleted.');
+      await loadFiles();
+    } catch (error) {
+      toast('Delete failed: ' + (error.message || 'Please try again.'), true);
+      await loadFiles();
+    } finally { button.disabled = false; updateBulkUI(); }
+  }
+
+  $('selectVisible').addEventListener('change', () => {
+    document.querySelectorAll('[data-image-select]').forEach(el => {
+      if ($('selectVisible').checked) selectedImages.add(el.dataset.imageSelect);
+      else selectedImages.delete(el.dataset.imageSelect);
+      el.checked = $('selectVisible').checked;
+    });
+    updateBulkUI();
+  });
+  $('clearSelected').addEventListener('click', () => {
+    selectedImages.clear(); renderFiles();
+  });
+  $('deleteSelected').addEventListener('click', () => {
+    const targets = files.filter(f => selectedImages.has(f.id) && isImage(f));
+    deleteFilesBatch(targets);
+  });
+  $('deleteAll').addEventListener('click', () => deleteFilesBatch([...files], true));
+  $('downloadSelected').addEventListener('click', async () => {
+    const targets = files.filter(f => selectedImages.has(f.id) && isImage(f));
+    if (!targets.length || !user) return;
+    const button = $('downloadSelected');
+    button.disabled = true; button.textContent = 'Preparing ZIP…';
+    try {
+      if (!window.JSZip) throw new Error('ZIP download library did not load. Refresh and try again.');
+      const zip = new window.JSZip();
+      for (const file of targets) {
+        const { data, error } = await db.storage.from(BUCKET).createSignedUrl(file.storage_path, 120);
+        if (error) throw error;
+        const response = await fetch(data.signedUrl);
+        if (!response.ok) throw new Error('Could not download ' + file.name);
+        let name = file.name, suffix = 2;
+        while (zip.file(name)) {
+          const dot = name.lastIndexOf('.');
+          name = dot > 0 ? file.name.slice(0, dot) + ' (' + suffix++ + ')' + file.name.slice(dot) : file.name + ' (' + suffix++ + ')';
+        }
+        zip.file(name, await response.blob());
+      }
+      const blob = await zip.generateAsync({ type:'blob' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'jvault-images-' + new Date().toISOString().slice(0,10) + '.zip';
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      toast('ZIP download started.');
+    } catch (error) { toast('Could not prepare ZIP: ' + (error.message || 'Please try again.'), true); }
+    finally { button.textContent = 'Download selected'; button.disabled = false; }
+  });
+\n  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
     document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item === button));
     view = button.dataset.view; renderFiles();
   }));
