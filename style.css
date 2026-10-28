@@ -225,3 +225,12 @@ html,body{background:var(--bg);color:var(--ink)}body{font-family:"DM Sans",Inter
 .upload-detail{margin-top:8px;font-size:11px;color:#607b96;overflow-wrap:anywhere}
 .dropzone.uploading{border-color:#8bbff1;background:#f4f9ff}
 .upload-progress.hidden{display:none}
+
+
+/* Always-visible bulk image selection entry point */
+.image-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 14px;border:1px solid #dce8f5;border-radius:12px;background:#f8fbff}
+.image-tools>span{font-size:11px;color:#607b96}
+.select-all-images-btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 15px;border:1px solid #1479ef;border-radius:9px;background:#1479ef;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.select-all-images-btn:hover:not(:disabled){background:#0868d8}
+.select-all-images-btn:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:520px){.image-tools{align-items:flex-start}.image-tools>span{align-self:center}}
