@@ -161,6 +161,8 @@
     $('deleteSelected').disabled = selectedImages.size === 0;
     $('selectVisible').checked = visibleImages.length > 0 && selectedVisible === visibleImages.length;
     $('selectVisible').disabled = visibleImages.length === 0;
+    $('selectAllImages').disabled = totalImages === 0;
+    $('selectAllImages').textContent = totalImages ? 'Select all images (' + totalImages + ')' : 'Select all images (0)';
     $('deleteAll').disabled = files.length === 0;
   }
   function renderEmpty(items) {
@@ -305,9 +307,11 @@
   }
 
   $('selectAllImages').addEventListener('click', () => {
-    files.filter(isImage).forEach(file => selectedImages.add(file.id));
+    const images = files.filter(isImage);
+    if (!images.length) { toast('There are no images in your vault yet.', true); return; }
+    images.forEach(file => selectedImages.add(file.id));
     renderFiles();
-    toast('Selected all ' + files.filter(isImage).length + ' images.');
+    toast('Selected all ' + images.length + ' images.');
   });
   $('selectVisible').addEventListener('change', () => {
     document.querySelectorAll('[data-image-select]').forEach(el => {
