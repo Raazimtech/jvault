@@ -172,7 +172,7 @@
     const ext = (file.name.split('.').pop() || 'FILE').slice(0,4).toUpperCase();
     const date = new Date(file.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const cats = ['Uncategorized','Documents','Work','Personal','Finance','Education','Images','Other', ...files.map(f => f.category || 'Uncategorized')].filter((v,i,a) => a.indexOf(v) === i).sort();
-    return '<div class="row"><div class="filename">' + (isImage(file) ? '<input class="image-select" type="checkbox" data-image-select="' + file.id + '" aria-label="Select image ' + escapeHTML(file.name) + '" ' + (selectedImages.has(file.id) ? 'checked' : '') + '>' : '') + '<div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div>';
+    return '<div class="file-entry"><div class="row"><div class="filename">' + (isImage(file) ? '<input class="image-select" type="checkbox" data-image-select="' + file.id + '" aria-label="Select image ' + escapeHTML(file.name) + '" ' + (selectedImages.has(file.id) ? 'checked' : '') + '>' : '') + '<div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn note-toggle" data-act="note" data-id="' + file.id + '" title="Open text note" aria-label="Open text note for ' + escapeHTML(file.name) + '">T</button><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div><div class="file-note-panel hidden" data-note-panel="' + file.id + '"><div class="file-note-heading"><div><strong>Text note</strong><span>Saved to your JVault account and synced across devices</span></div><button type="button" class="secondary-btn note-copy" data-copy-note="' + file.id + '">Copy text</button></div><textarea class="file-note-input" data-note-input="' + file.id + '" rows="3" maxlength="20000" placeholder="Write or paste text here…">' + escapeHTML(file.note || '') + '</textarea><div class="file-note-footer"><span data-note-status="' + file.id + '">Changes save automatically</span><span>20,000 characters max</span></div></div></div>';
   }
 
   function setUploadProgress(visible, status = '', detail = '', percent = 0) {
@@ -250,12 +250,56 @@
     } catch (error) { toast('Category update failed: ' + error.message, true); }
     finally { select.disabled = false; }
   });
+  const noteTimers = new Map();
+  async function saveFileNote(fileId, value) {
+    const file = files.find(item => item.id === fileId);
+    const status = document.querySelector('[data-note-status="' + fileId + '"]');
+    if (!file || !user) return;
+    if (status) status.textContent = 'Saving…';
+    try {
+      const { error } = await db.from('jvault_files').update({ note:value, updated_at:new Date().toISOString() }).eq('id', fileId).eq('owner_id', user.id);
+      if (error) throw error;
+      file.note = value;
+      if (status) status.textContent = 'Saved';
+    } catch (error) {
+      if (status) status.textContent = 'Could not save. ' + (error.message || 'Try again.');
+      toast('Note save failed: ' + (error.message || 'Please try again.'), true);
+    }
+  }
+  $('list').addEventListener('input', event => {
+    const area = event.target.closest('textarea[data-note-input]');
+    if (!area || !user) return;
+    const fileId = area.dataset.noteInput;
+    const status = document.querySelector('[data-note-status="' + fileId + '"]');
+    if (status) status.textContent = 'Unsaved changes…';
+    clearTimeout(noteTimers.get(fileId));
+    noteTimers.set(fileId, setTimeout(() => saveFileNote(fileId, area.value), 650));
+  });
   $('list').addEventListener('click', async event => {
+    const copyButton = event.target.closest('button[data-copy-note]');
+    if (copyButton) {
+      const area = document.querySelector('textarea[data-note-input="' + copyButton.dataset.copyNote + '"]');
+      if (!area) return;
+      try {
+        await navigator.clipboard.writeText(area.value);
+        toast(area.value ? 'Text copied to clipboard.' : 'The note is empty.', !area.value);
+      } catch (_) {
+        area.focus(); area.select();
+        toast('Clipboard access was blocked. Select the text and copy it manually.', true);
+      }
+      return;
+    }
     const button = event.target.closest('button[data-act]'); if (!button || !user) return;
     const file = files.find(f => f.id === button.dataset.id); if (!file) return;
     button.disabled = true;
     try {
-      if (button.dataset.act === 'download') {
+      if (button.dataset.act === 'note') {
+        const panel = document.querySelector('[data-note-panel="' + file.id + '"]');
+        if (panel) {
+          panel.classList.toggle('hidden');
+          if (!panel.classList.contains('hidden')) panel.querySelector('textarea').focus();
+        }
+      } else if (button.dataset.act === 'download') {
         const { data, error } = await db.storage.from(BUCKET).createSignedUrl(file.storage_path, 60, { download:file.name });
         if (error) throw error;
         const link = document.createElement('a'); link.href = data.signedUrl; link.download = file.name; link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
