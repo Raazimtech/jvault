@@ -9,10 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=20261101-notes2">
+  <link rel="stylesheet" href="./style.css?v=20261101-workspace">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="./app.js?v=20261101-notes2"></script>
+  <script defer src="./app.js?v=20261101-workspace"></script>
 </head>
 <body>
   <div id="notice" class="notice" role="status" aria-live="polite"></div>
@@ -48,20 +48,23 @@
     </section>
   </main>
   <main id="app" class="app-shell hidden">
-    <aside class="sidebar">
+    <div class="sidebar-scrim" id="sidebarScrim"></div>
+    <aside class="sidebar" id="sidebar">
       <a class="brand side-brand" href="#" aria-label="JVault home"><span class="brand-mark"><svg viewBox="0 0 32 32" role="img" aria-label="JVault logo" xmlns="http://www.w3.org/2000/svg"><path d="M16 2.8 27 7v8.2c0 7.1-4.5 11.7-11 14-6.5-2.3-11-6.9-11-14V7l11-4.2Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M20.5 10.2v9.2a4.7 4.7 0 0 1-8.1 3.3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="20.5" cy="7.6" r="1.4" fill="currentColor"/></svg></span><span>JVault</span></a>
       <div class="side-label">WORKSPACE</div>
       <nav class="side-nav">
-        <button class="nav-item active" data-view="all"><span class="nav-icon">▤</span> All documents <span class="nav-count" id="sf">0</span></button>
-        <button class="nav-item" data-view="recent"><span class="nav-icon">◷</span> Recent</button>
-        <button class="nav-item" data-view="categories"><span class="nav-icon">▦</span> Categories</button>
+        <button class="nav-item active" data-view="all" data-page="files"><span class="nav-icon">▤</span><span class="nav-text">All files</span><span class="nav-count" id="sf">0</span></button>
+        <button class="nav-item" data-view="recent" data-page="files"><span class="nav-icon">◷</span><span class="nav-text">Recent</span></button>
+        <button class="nav-item" data-view="categories" data-page="files"><span class="nav-icon">▦</span><span class="nav-text">Categories</span></button>
+        <button class="nav-item" data-page="text"><span class="nav-icon">▤</span><span class="nav-text">Text notes</span></button>
       </nav>
       <div class="storage-card"><div class="storage-heading"><span>Storage</span><span class="storage-symbol">↗</span></div><div class="storage-value" id="ss">0 B</div><div class="storage-sub">of 1 GB used</div><div class="progress-track"><div id="prog" class="progress-fill"></div></div><div id="usageText" class="storage-caption">0 B used</div></div>
       <div class="sidebar-bottom"><div class="secure-badge"><span>✳</span><div><strong>Your vault is private</strong><small>Access is protected</small></div></div><button id="logout" class="logout-btn"><span>↪</span> Sign out</button></div>
     </aside>
     <section class="workspace">
-      <header class="topbar"><div class="crumb">Workspace <span>/</span> <strong>My vault</strong></div><div class="top-actions"><span class="today" id="today"></span><div class="avatar" id="avatar">J</div><div id="uname" class="user-name">Owner</div><button id="logoutTop" class="top-logout" type="button" aria-label="Log out of JVault"><span aria-hidden="true">↪</span> Log out</button></div></header>
+      <header class="topbar"><div class="topbar-left"><button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle navigation" aria-expanded="true">☰</button><div class="crumb">Workspace <span>/</span> <strong id="crumbCurrent">Files</strong></div></div><div class="top-actions"><span class="today" id="today"></span><div class="avatar" id="avatar">J</div><div id="uname" class="user-name">Owner</div><button id="logoutTop" class="top-logout" type="button" aria-label="Log out of JVault"><span aria-hidden="true">↪</span> Log out</button></div></header>
       <div class="content">
+        <div id="filesPage" class="page-view active">
         <div class="welcome-row"><div><div class="eyebrow muted-eyebrow">YOUR PERSONAL SPACE</div><h1>Your documents<span class="title-period">.</span></h1><p class="subtitle">Everything important, organized in one private place.</p></div><button id="upload" class="primary-btn upload-main"><span class="upload-plus">＋</span> Upload files</button></div>
         <div class="stats-grid"><article class="stat-card"><div class="stat-top"><span>Total documents</span><span class="stat-icon">▤</span></div><div class="stat-number" id="statDocs">0</div><div class="stat-foot">Stored in your vault</div></article><article class="stat-card"><div class="stat-top"><span>Space used</span><span class="stat-icon">◴</span></div><div class="stat-number" id="statSpace">0 B</div><div class="stat-foot">Across all documents</div></article><article class="stat-card"><div class="stat-top"><span>Categories</span><span class="stat-icon">▦</span></div><div class="stat-number" id="scat">0</div><div class="stat-foot">Keep things organized</div></article></div>
         <section id="drop" class="dropzone"><div class="drop-icon">↑</div><div class="drop-copy"><strong>Drop files here to upload</strong><span>or browse from your device · Max 50 MB per file</span></div><button id="browse" class="secondary-btn">Browse files</button><input id="picker" type="file" multiple hidden></section>
@@ -70,7 +73,12 @@
           <div class="image-tools"><button id="selectAllImages" class="select-all-images-btn" type="button">Select all images</button><span>Quickly select every image in your vault</span></div>
           <div id="bulkBar" class="bulk-bar hidden"><label class="select-visible"><input id="selectVisible" type="checkbox" disabled> Select visible images</label><span id="selectedCount">0 images selected</span><div class="bulk-actions"><button id="downloadSelected" class="secondary-btn" type="button">Download selected</button><button id="deleteSelected" class="danger-btn" type="button">Delete selected</button><button id="clearSelected" class="text-btn" type="button">Clear</button></div></div>
           <div id="list" class="file-list"><div class="empty"><strong>Preparing your vault…</strong><p>Loading your private documents.</p></div></div>
+        </section>        </div>
+        <section id="textPage" class="page-view text-page" aria-labelledby="textPageTitle">
+          <div class="page-intro"><div><div class="eyebrow muted-eyebrow">YOUR PERSONAL SPACE</div><h1 id="textPageTitle">Text notes<span class="title-period">.</span></h1><p class="subtitle">A private place for text you want to keep, copy and access on any device.</p></div><div class="note-sync"><span class="sync-dot"></span><span id="globalNoteStatus">Loading your notes…</span></div></div>
+          <section class="editor-card"><div class="editor-toolbar"><div><strong>Your text</strong><span>Automatically saved to your JVault account</span></div><div class="editor-actions"><span id="globalCharCount">0 characters</span><button id="copyGlobalNote" class="secondary-btn" type="button">Copy text</button></div></div><textarea id="globalNoteInput" class="global-note-input" spellcheck="true" placeholder="Start writing or paste text here…"></textarea><div class="editor-footer"><span>Private to your owner account · Syncs across devices</span><button id="clearGlobalNote" class="text-btn" type="button">Clear text</button></div></section>
         </section>
+
         <footer class="app-footer"><span>JVAULT <span>·</span> PRIVATE BY DESIGN</span><span>Your files belong to you.</span></footer>
       </div>
     </section>
