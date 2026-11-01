@@ -9,7 +9,7 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
   const $ = id => document.getElementById(id);
-  let user = null, profile = null, files = [], view = 'all', toastTimer, loading = false;
+  let user = null, profile = null, files = [], view = 'all', page = 'files', toastTimer, loading = false, globalNoteTimer = null, globalNoteRowId = null;
   const selectedImages = new Set();
   $('year').textContent = new Date().getFullYear();
 
@@ -108,6 +108,8 @@
     $('avatar').textContent = profile.username.charAt(0).toUpperCase();
     $('today').textContent = new Intl.DateTimeFormat(undefined, { weekday:'long', month:'long', day:'numeric' }).format(new Date()).toUpperCase();
     await loadFiles();
+    await loadGlobalNote();
+    setupNavigation();
   }
   async function loadFiles() {
     if (!user || loading) return;
@@ -122,6 +124,96 @@
     } catch (error) { toast('Could not load files: ' + error.message, true); }
     finally { loading = false; $('list').classList.remove('loading'); }
   }
+  async function loadGlobalNote() {
+    if (!user) return;
+    $('globalNoteStatus').textContent = 'Loading…';
+    try {
+      const { data, error } = await db.from('jvault_notes').select('id,content').eq('owner_id', user.id).maybeSingle();
+      if (error) throw error;
+      globalNoteRowId = data?.id || null;
+      $('globalNoteInput').value = data?.content || '';
+      updateGlobalNoteCount();
+      $('globalNoteStatus').textContent = 'All changes saved';
+    } catch (error) {
+      $('globalNoteStatus').textContent = 'Could not load notes';
+      toast('Text notes could not load: ' + error.message, true);
+    }
+  }
+  function updateGlobalNoteCount() {
+    const count = $('globalNoteInput').value.length;
+    $('globalCharCount').textContent = count.toLocaleString() + ' characters';
+  }
+  async function saveGlobalNote() {
+    if (!user) return;
+    const content = $('globalNoteInput').value;
+    $('globalNoteStatus').textContent = 'Saving…';
+    try {
+      const { data, error } = await db.from('jvault_notes').upsert(
+        { owner_id: user.id, content, updated_at: new Date().toISOString() },
+        { onConflict: 'owner_id' }
+      ).select('id').single();
+      if (error) throw error;
+      globalNoteRowId = data.id;
+      $('globalNoteStatus').textContent = 'All changes saved';
+    } catch (error) {
+      $('globalNoteStatus').textContent = 'Save failed — try again';
+      toast('Text note could not save: ' + error.message, true);
+    }
+  }
+  function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.page === 'text') {
+        page = 'text';
+      } else {
+        page = 'files';
+        view = button.dataset.view || 'all';
+        document.querySelectorAll('.nav-item[data-view]').forEach(item => item.classList.toggle('active', item === button));
+      }
+      document.querySelectorAll('.nav-item[data-page="text"]').forEach(item => item.classList.toggle('active', page === 'text'));
+      $('filesPage').classList.toggle('active', page === 'files');
+      $('textPage').classList.toggle('active', page === 'text');
+      $('crumbCurrent').textContent = page === 'text' ? 'Text notes' : (view === 'recent' ? 'Recent' : view === 'categories' ? 'Categories' : 'Files');
+      if (page === 'files') renderFiles();
+      closeMobileSidebar();
+    }));
+    $('sidebarToggle').addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 760px)').matches) {
+        $('app').classList.toggle('sidebar-open');
+        $('sidebarToggle').setAttribute('aria-expanded', $('app').classList.contains('sidebar-open') ? 'true' : 'false');
+      } else {
+        $('app').classList.toggle('sidebar-collapsed');
+        $('sidebarToggle').setAttribute('aria-expanded', $('app').classList.contains('sidebar-collapsed') ? 'false' : 'true');
+      }
+    });
+    $('sidebarScrim').addEventListener('click', closeMobileSidebar);
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobileSidebar(); });
+    $('globalNoteInput').addEventListener('input', () => {
+      updateGlobalNoteCount();
+      $('globalNoteStatus').textContent = 'Unsaved changes…';
+      clearTimeout(globalNoteTimer);
+      globalNoteTimer = setTimeout(saveGlobalNote, 700);
+    });
+    $('copyGlobalNote').addEventListener('click', async () => {
+      const value = $('globalNoteInput').value;
+      if (!value) return toast('There is no text to copy.', true);
+      try { await navigator.clipboard.writeText(value); toast('Text copied to clipboard.'); }
+      catch (_) { $('globalNoteInput').focus(); $('globalNoteInput').select(); toast('Clipboard blocked. Select the text and copy manually.', true); }
+    });
+    $('clearGlobalNote').addEventListener('click', () => {
+      if (!$('globalNoteInput').value) return;
+      if (!confirm('Clear all text in your notes?')) return;
+      $('globalNoteInput').value = '';
+      updateGlobalNoteCount();
+      $('globalNoteStatus').textContent = 'Unsaved changes…';
+      clearTimeout(globalNoteTimer);
+      globalNoteTimer = setTimeout(saveGlobalNote, 100);
+    });
+  }
+  function closeMobileSidebar() {
+    $('app').classList.remove('sidebar-open');
+    $('sidebarToggle').setAttribute('aria-expanded', 'false');
+  }
+
   function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }
 
   function renderFiles() {
@@ -439,4 +531,5 @@
     }
   });
   init();
+  window.addEventListener('resize', () => { if (!window.matchMedia('(max-width: 760px)').matches) closeMobileSidebar(); });
 })();
