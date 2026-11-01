@@ -259,3 +259,17 @@ html,body{background:var(--bg);color:var(--ink)}body{font-family:"DM Sans",Inter
  .file-note-heading .secondary-btn{margin:0;min-height:32px;white-space:nowrap}
  .file-note-footer{font-size:8px}
 }
+
+
+/* Ensure all four file actions, including the text-note control, remain visible. */
+.thead,.row{grid-template-columns:minmax(220px,2.3fr) minmax(105px,1fr) minmax(100px,1fr) 146px}
+.actions{gap:5px;flex-wrap:nowrap}
+.file-entry .note-toggle{width:auto;min-width:43px;padding:0 7px;font-size:10px;white-space:nowrap}
+@media(max-width:1050px){
+ .thead,.row{grid-template-columns:minmax(170px,2fr) minmax(90px,1fr) 85px 146px}
+}
+@media(max-width:760px){
+ .thead,.row{grid-template-columns:minmax(0,1fr) auto}
+ .file-entry .note-toggle{min-width:40px;padding:0 6px}
+ .actions{gap:4px}
+}
