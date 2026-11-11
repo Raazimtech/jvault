@@ -227,7 +227,7 @@
     $('sf').textContent = files.length; $('ss').textContent = bytes(used); $('statDocs').textContent = files.length;
     $('statSpace').textContent = bytes(used); $('scat').textContent = categories.length;
     $('usageText').textContent = bytes(used) + ' used';
-    $('prog').style.width = Math.min(100, used / (1024 ** 3) * 100) + '%';
+
     let items = files.filter(f => (!query || f.name.toLowerCase().includes(query) || String(f.category).toLowerCase().includes(query)) && (!$('filter').value || (f.category || 'Uncategorized') === $('filter').value));
     if (view === 'recent') items = items.slice(0, 8);
     if ($('sort').value === 'old') items.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
@@ -498,7 +498,7 @@
   });
 
   async function signOutOfVault() {
-    const buttons = [$('logout'), $('logoutTop')].filter(Boolean);
+    const buttons = [$('logout')];
     buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
     try {
       const { error } = await db.auth.signOut({ scope: 'local' });
