@@ -9,7 +9,7 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
   const $ = id => document.getElementById(id);
-  let user = null, profile = null, files = [], view = 'all', page = 'files', toastTimer, loading = false, globalNoteTimer = null, globalNoteRowId = null;
+  let user = null, profile = null, files = [], view = 'all', page = 'files', toastTimer, loading = false, globalNoteTimer = null, globalNoteRowId = null, navigationInitialized = false;
   const selectedImages = new Set();
   $('year').textContent = new Date().getFullYear();
 
@@ -161,9 +161,13 @@
     }
   }
   function setupNavigation() {
+    if (navigationInitialized) return;
+    navigationInitialized = true;
+    $('sidebarToggle').setAttribute('aria-expanded', window.matchMedia('(max-width: 760px)').matches ? 'false' : 'true');
     document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => {
       if (button.dataset.page === 'text') {
         page = 'text';
+        document.querySelectorAll('.nav-item[data-view]').forEach(item => item.classList.remove('active'));
       } else {
         page = 'files';
         view = button.dataset.view || 'all';
@@ -212,7 +216,9 @@
   }
   function closeMobileSidebar() {
     $('app').classList.remove('sidebar-open');
-    $('sidebarToggle').setAttribute('aria-expanded', 'false');
+    const mobile = window.matchMedia('(max-width: 760px)').matches;
+    const collapsed = $('app').classList.contains('sidebar-collapsed');
+    $('sidebarToggle').setAttribute('aria-expanded', mobile || collapsed ? 'false' : 'true');
   }
 
   function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }
