@@ -115,7 +115,7 @@
     if (!user || loading) return;
     loading = true; $('list').classList.add('loading');
     try {
-      const { data, error } = await db.from('jvault_files').select('*').order('created_at', { ascending: false });
+      const { data, error } = await db.from('jvault_files').select('*').eq('owner_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
       files = data || [];
       const validIds = new Set(files.filter(isImage).map(f => f.id));
@@ -178,6 +178,7 @@
     }));
     $('sidebarToggle').addEventListener('click', () => {
       if (window.matchMedia('(max-width: 760px)').matches) {
+        $('app').classList.remove('sidebar-collapsed');
         $('app').classList.toggle('sidebar-open');
         $('sidebarToggle').setAttribute('aria-expanded', $('app').classList.contains('sidebar-open') ? 'true' : 'false');
       } else {
@@ -227,7 +228,7 @@
     $('statSpace').textContent = bytes(used); $('scat').textContent = categories.length;
     $('usageText').textContent = bytes(used) + ' used';
     $('prog').style.width = Math.min(100, used / (1024 ** 3) * 100) + '%';
-    let items = files.filter(f => (!query || f.name.toLowerCase().includes(query) || String(f.category).toLowerCase().includes(query)) && (!$('filter').value || f.category === $('filter').value));
+    let items = files.filter(f => (!query || f.name.toLowerCase().includes(query) || String(f.category).toLowerCase().includes(query)) && (!$('filter').value || (f.category || 'Uncategorized') === $('filter').value));
     if (view === 'recent') items = items.slice(0, 8);
     if ($('sort').value === 'old') items.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     if ($('sort').value === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
@@ -327,7 +328,7 @@
   $('picker').addEventListener('change', e => uploadFiles(e.target.files));
   ['search','filter','sort'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', renderFiles));
   const drop = $('drop');
-  ['dragenter','dragover'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.style.background = '#e7efd9'; }));
+  ['dragenter','dragover'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.style.background = '#eaf4fc'; }));
   ['dragleave','drop'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.style.background = ''; }));
   drop.addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
 
@@ -496,10 +497,6 @@
     finally { button.textContent = 'Download selected'; button.disabled = false; }
   });
 
-  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
-    document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item === button));
-    view = button.dataset.view; renderFiles();
-  }));
   async function signOutOfVault() {
     const buttons = [$('logout'), $('logoutTop')].filter(Boolean);
     buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
@@ -523,7 +520,6 @@
     }
   }
   $('logout').addEventListener('click', signOutOfVault);
-  $('logoutTop').addEventListener('click', signOutOfVault);
   db.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT' && user) {
       user = null; profile = null; files = [];
@@ -531,5 +527,5 @@
     }
   });
   init();
-  window.addEventListener('resize', () => { if (!window.matchMedia('(max-width: 760px)').matches) closeMobileSidebar(); });
+  window.addEventListener('resize', () => { if (window.matchMedia('(max-width: 760px)').matches) { $('app').classList.remove('sidebar-collapsed'); closeMobileSidebar(); } else closeMobileSidebar(); });
 })();
