@@ -260,8 +260,7 @@
     $('deleteSelected').disabled = selectedImages.size === 0;
     $('selectVisible').checked = visibleImages.length > 0 && selectedVisible === visibleImages.length;
     $('selectVisible').disabled = visibleImages.length === 0;
-    $('selectAllImages').disabled = totalImages === 0;
-    $('selectAllImages').textContent = totalImages ? 'Select all images (' + totalImages + ')' : 'Select all images (0)';
+
     $('deleteAll').disabled = files.length === 0;
   }
   function renderEmpty(items) {
@@ -283,7 +282,7 @@
     $('uploadPercent').textContent = Math.round(safePercent) + '%';
     $('uploadProgressFill').style.width = safePercent + '%';
     $('upload').disabled = visible;
-    $('browse').disabled = visible;
+
   }
 
   async function uploadFiles(fileList) {
@@ -330,7 +329,7 @@
     }
   }
   $('upload').addEventListener('click', () => $('picker').click());
-  $('browse').addEventListener('click', () => $('picker').click());
+
   $('picker').addEventListener('change', e => uploadFiles(e.target.files));
   ['search','filter','sort'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', renderFiles));
   const drop = $('drop');
@@ -449,13 +448,6 @@
     } finally { button.disabled = false; updateBulkUI(); }
   }
 
-  $('selectAllImages').addEventListener('click', () => {
-    const images = files.filter(isImage);
-    if (!images.length) { toast('There are no images in your vault yet.', true); return; }
-    images.forEach(file => selectedImages.add(file.id));
-    renderFiles();
-    toast('Selected all ' + images.length + ' images.');
-  });
   $('selectVisible').addEventListener('change', () => {
     document.querySelectorAll('[data-image-select]').forEach(el => {
       if ($('selectVisible').checked) selectedImages.add(el.dataset.imageSelect);
