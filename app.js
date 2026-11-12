@@ -2,6 +2,12 @@
 (() => {
 const SUPABASE_URL='https://dpiwdhtbhwjgatvcfkcb.supabase.co', SUPABASE_KEY='sb_publishable_PSZnTEo74jObih_6TTpXVQ_tJwzTnXY';
 const FUNCTION_URL=SUPABASE_URL+'/functions/v1/jvault', BUCKET='jvault-private', MAX_FILE=50*1024*1024;
+let busyRequests=0,busyShownAt=0,busyShowTimer=null,busyHideTimer=null;
+function showGlobalBusy(){const bar=document.getElementById('globalBusy');if(!bar)return;clearTimeout(busyHideTimer);if(!bar.classList.contains('active')){busyShownAt=Date.now();bar.classList.add('active');bar.setAttribute('aria-hidden','false')}}
+function beginBusy(){busyRequests++;if(busyRequests===1){clearTimeout(busyHideTimer);busyShowTimer=setTimeout(showGlobalBusy,120)}}
+function endBusy(){busyRequests=Math.max(0,busyRequests-1);if(!busyRequests){clearTimeout(busyShowTimer);const bar=document.getElementById('globalBusy');if(!bar)return;const wait=Math.max(0,320-(Date.now()-busyShownAt));busyHideTimer=setTimeout(()=>{if(!busyRequests){bar.classList.remove('active');bar.setAttribute('aria-hidden','true')}},wait)}}
+const nativeFetch=window.fetch.bind(window);
+window.fetch=async(...args)=>{beginBusy();try{return await nativeFetch(...args)}finally{endBusy()}};
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 let user=null,profile=null,files=[],folders=[],pages=[],reminders=[],activity=[],view='all',page='files',currentFolder=null,selected=new Set(),activeNote=null,noteTimer=null,toastTimer=null,loading=false,locked=false;const notifiedReminders=new Set();
