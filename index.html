@@ -4,12 +4,12 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#eaf4fb"><meta name="description" content="JVault — a private space for files, notes and knowledge.">
 <title>JVault — Private workspace</title>
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon.svg">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20261112-aurora">
+<link rel="stylesheet" href="./style.css?v=20261112-jvault-mark">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script defer src="./app.js?v=20261112-aurora"></script>
+<script defer src="./app.js?v=20261112-jvault-mark"></script>
 </head>
 <body>
 <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -46,12 +46,12 @@
   <div class="sidebar-bottom"><div class="secure-badge"><span class="secure-mark">✓</span><div><strong>Private by design</strong><small>Only you can access this vault.</small></div></div><button id="logout" class="logout-btn">↪ <span>Sign out</span></button></div>
  </aside>
  <section class="workspace">
-  <header class="topbar"><div class="topbar-left"><button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle navigation"><span></span><span></span></button><div class="crumb">JVault <span>/</span><strong id="crumbCurrent">All files</strong></div></div><div class="top-actions"><div class="quick-capture"><input id="quickCapture" placeholder="Quick capture a thought…" aria-label="Quick capture a thought"><button id="quickCaptureBtn" title="Save quick note">＋</button></div><span id="today" class="today"></span><div id="avatar" class="avatar">J</div><div id="uname" class="user-name">Owner</div></div></header>
+  <header class="topbar"><div class="topbar-left"><button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle navigation"><span></span><span></span></button><div class="crumb">JVault <span>/</span><strong id="crumbCurrent">All files</strong></div></div><div class="top-actions"><div class="quick-capture"><input id="quickCapture" placeholder="Quick capture a thought…" aria-label="Quick capture a thought"><button id="quickCaptureBtn" title="Capture a photo" aria-label="Capture a photo">◉</button></div><span id="today" class="today"></span><div id="avatar" class="avatar">J</div><div id="uname" class="user-name">Owner</div></div></header>
   <div class="content">
    <section id="filesPage" class="page-view active">
     <div class="welcome-row"><div><div class="eyebrow">YOUR LIBRARY</div><h1 id="pageTitle">All files<span>.</span></h1><p class="subtitle" id="pageSubtitle">A clear view of everything you keep.</p></div><button id="upload" class="primary-btn upload-main">＋ Upload files</button></div>
     <section class="stats-grid"><article class="stat-card"><span>FILES STORED</span><strong id="statDocs">0</strong><small>In your private library</small></article><article class="stat-card"><span>SPACE USED</span><strong id="statSpace">0 B</strong><small>Total file size</small></article><article class="stat-card"><span>FOLDERS</span><strong id="scat">0</strong><small>Your organization</small></article><article class="stat-card"><span>FAVORITES</span><strong id="statFavorites">0</strong><small>Quick access items</small></article></section>
-    <section id="drop" class="dropzone"><div class="drop-symbol">↑</div><div><strong>Drop files to add them to your vault</strong><small>Or choose files from your device · 50 MB maximum per file</small></div><span class="drop-hint">DRAG & DROP</span><input id="picker" type="file" multiple hidden></section>
+    <section id="drop" class="dropzone"><div class="drop-symbol">↑</div><div><strong>Drop files to add them to your vault</strong><small>Or choose files from your device · 50 MB maximum per file</small></div><span class="drop-hint">DRAG & DROP</span><input id="picker" type="file" multiple hidden><input id="capturePicker" type="file" accept="image/*" capture="environment" hidden></section>
     <section id="uploadProgress" class="upload-progress hidden"><div class="upload-progress-top"><span id="uploadStatus">Uploading…</span><strong id="uploadPercent">0%</strong></div><div class="upload-progress-track"><span id="uploadProgressFill"></span></div><small id="uploadDetail"></small></section>
     <section class="library-section"><div class="section-heading"><div><div class="eyebrow">LIBRARY</div><h2 id="filesTitle">Your files</h2></div><div class="view-actions"><button id="newFolder" class="secondary-btn">＋ New folder</button><button id="deleteAll" class="quiet-danger">Move all to bin</button></div></div>
      <div class="library-toolbar"><label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="Search files, notes and tags…"></label><select id="filter"><option value="">All categories</option></select><select id="sort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="name">Name A–Z</option><option value="size">Largest first</option></select><select id="layoutMode" aria-label="View layout"><option value="list">List view</option><option value="grid">Grid view</option></select></div>
