@@ -20,3 +20,5 @@
 
 .note-search-hit{display:block;width:100%;margin:0 0 7px;padding:12px 14px;border:1px solid #fff;border-radius:13px;background:#e9f5fcaa;color:#52748c;text-align:left;box-shadow:0 5px 15px #315d7a08}.note-search-hit strong,.note-search-hit small{display:block}.note-search-hit strong{font-size:10px}.note-search-hit small{margin-top:4px;color:#91a6b5;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.note-search-hit:hover{background:#fff;transform:translateY(-1px)}
 .app-shell.sidebar-collapsed{grid-template-columns:0 minmax(0,1fr);gap:0}.app-shell.sidebar-collapsed .sidebar{display:none}
+
+.reminder-copy{min-width:0;flex:1}.reminder-item .reminder-countdown{color:#3985b5;font-weight:700}.push-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.push-actions button{font-size:10px}
