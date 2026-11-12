@@ -37,3 +37,13 @@
 .busy-spinner{width:13px;height:13px;flex:none;border:2px solid #d6e8f3;border-top-color:#398fc5;border-radius:50%;animation:jvault-spin .7s linear infinite}
 @keyframes jvault-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.busy-spinner{animation:none;border-color:#398fc5}}
+
+/* iOS Safari auto-zooms focused form controls below 16px. Keep mobile inputs at a readable, stable size. */
+@media (max-width:760px){
+ input,textarea,select,
+ .quick-capture input,.search-box input,.note-editor-head>input,
+ .auth-card input,.library-toolbar select,.reminder-form input,
+ .modal-body input,.modal-body select{
+  font-size:16px !important;
+ }
+}
