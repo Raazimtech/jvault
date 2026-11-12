@@ -22,3 +22,11 @@
 .app-shell.sidebar-collapsed{grid-template-columns:0 minmax(0,1fr);gap:0}.app-shell.sidebar-collapsed .sidebar{display:none}
 
 .reminder-copy{min-width:0;flex:1}.reminder-item .reminder-countdown{color:#3985b5;font-weight:700}.push-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.push-actions button{font-size:10px}
+
+/* Global activity feedback for database, storage, auth and API requests. */
+.global-busy{position:fixed;z-index:200;top:0;left:0;width:100%;height:3px;pointer-events:none;opacity:0;transition:opacity .16s ease;background:transparent;overflow:hidden}
+.global-busy:before{content:"";position:absolute;inset:0 auto 0 0;width:34%;border-radius:0 4px 4px 0;background:#398fc5;box-shadow:0 0 10px #398fc577;transform:translateX(-110%)}
+.global-busy.active{opacity:1}
+.global-busy.active:before{animation:jvault-progress 1.05s ease-in-out infinite}
+@keyframes jvault-progress{0%{transform:translateX(-110%)}55%{transform:translateX(190%)}100%{transform:translateX(310%)}}
+@media(prefers-reduced-motion:reduce){.global-busy.active:before{animation:none;transform:translateX(0);width:100%}}
