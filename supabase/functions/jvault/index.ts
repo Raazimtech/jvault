@@ -3,7 +3,7 @@ import { generateVapidKey, vapidPublicKey, send as sendWebPush } from "jsr:@daak
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@5d32cb3abd1670df962f7ad69316f0897806693a/";
+const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@c94f0def11d1dd5aae2140543afa9aeaf512ddab/";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-jvault-dispatch", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 async function serveSite(): Promise<Response> {
