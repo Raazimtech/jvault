@@ -1,529 +1,78 @@
 'use strict';
 (() => {
-  const SUPABASE_URL = 'https://dpiwdhtbhwjgatvcfkcb.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_PSZnTEo74jObih_6TTpXVQ_tJwzTnXY';
-  const FUNCTION_URL = SUPABASE_URL + '/functions/v1/jvault';
-  const BUCKET = 'jvault-private';
-  const MAX_FILE = 50 * 1024 * 1024;
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-  });
-  const $ = id => document.getElementById(id);
-  let user = null, profile = null, files = [], view = 'all', page = 'files', toastTimer, loading = false, globalNoteTimer = null, globalNoteRowId = null, navigationInitialized = false;
-  const selectedImages = new Set();
-  $('year').textContent = new Date().getFullYear();
-
-  function escapeHTML(value) {
-    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-  function bytes(value) {
-    const n = Number(value) || 0;
-    if (n < 1) return '0 B';
-    const units = ['B','KB','MB','GB','TB'];
-    const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
-    return (n / 1024 ** i).toFixed(i ? 1 : 0) + ' ' + units[i];
-  }
-  function note(message, type = 'error') {
-    const el = $('notice'); el.textContent = message; el.className = 'notice show' + (type === 'success' ? ' success' : '');
-  }
-  function clearNote() { $('notice').textContent = ''; $('notice').className = 'notice'; }
-  function toast(message, bad = false) {
-    const el = $('toast'); el.textContent = message; el.className = 'toast' + (bad ? ' bad' : '');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
-  }
-  function usernameEmail(name) { return name.toLowerCase() + '@jvault.invalid'; }
-  async function getSetupStatus() {
-    const response = await fetch(FUNCTION_URL + '/bootstrap-status', { cache: 'no-store' });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.error || 'Setup service is unavailable.');
-    return result;
-  }
-  function setAuthMode(setup) {
-    clearNote();
-    $('authhead').innerHTML = setup
-      ? '<h2>Create your vault</h2><p>Set up the one and only owner account for JVault.</p>'
-      : '<h2>Welcome back</h2><p>Sign in to access your private documents.</p>';
-    $('login').classList.toggle('hidden', setup);
-    $('setup').classList.toggle('hidden', !setup);
-  }
-  async function init() {
-    try {
-      const { data: { session } } = await db.auth.getSession();
-      if (session) {
-        const { data: p, error } = await db.from('jvault_profiles').select('username').eq('user_id', session.user.id).maybeSingle();
-        if (!error && p) { user = session.user; profile = p; await showApp(); return; }
-        await db.auth.signOut();
-      }
-      const status = await getSetupStatus();
-      setAuthMode(!status.claimed);
-    } catch (error) {
-      setAuthMode(false);
-      note('JVault could not reach its setup service. Check the deployment and refresh. ' + error.message);
-    }
-  }
-
-  $('setup').addEventListener('submit', async event => {
-    event.preventDefault(); clearNote();
-    const username = $('su').value.trim().toLowerCase();
-    const password = $('sp').value;
-    if (!/^[a-z0-9_]{3,24}$/.test(username)) return note('Use 3–24 letters, numbers, or underscores for your username.');
-    if (password.length < 12) return note('Use a password with at least 12 characters.');
-    if (password !== $('sc').value) return note('Those passwords do not match.');
-    $('sb').disabled = true; $('sb').innerHTML = 'Creating vault…';
-    try {
-      const response = await fetch(FUNCTION_URL + '/bootstrap', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, bootstrapCode: $('sbc').value.trim() })
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Could not create the owner account.');
-      $('setup').reset(); setAuthMode(false);
-      $('lu').value = username; $('lp').focus();
-      note('Your vault owner account is ready. Sign in to continue.', 'success');
-    } catch (error) {
-      note(error.message);
-      try { const status = await getSetupStatus(); setAuthMode(!status.claimed); if (status.claimed) note('One-time setup has already been used. Sign in with the existing owner account.'); } catch (_) {}
-    } finally { $('sb').disabled = false; $('sb').innerHTML = 'Create vault owner <span>↗</span>'; }
-  });
-
-  $('login').addEventListener('submit', async event => {
-    event.preventDefault(); clearNote();
-    const username = $('lu').value.trim().toLowerCase(), password = $('lp').value;
-    if (!/^[a-z0-9_]{3,24}$/.test(username)) return note('Enter a valid username.');
-    $('lb').disabled = true; $('lb').innerHTML = 'Unlocking…';
-    try {
-      const { data, error } = await db.auth.signInWithPassword({ email: usernameEmail(username), password });
-      if (error) throw error;
-      const { data: p, error: profileError } = await db.from('jvault_profiles').select('username').eq('user_id', data.user.id).maybeSingle();
-      if (profileError || !p) { await db.auth.signOut(); throw new Error('This account is not registered as the JVault owner.'); }
-      user = data.user; profile = p; await showApp();
-    } catch (error) {
-      note(error.message === 'Invalid login credentials' ? 'Incorrect username or password.' : error.message);
-    } finally { $('lb').disabled = false; $('lb').innerHTML = 'Unlock vault <span>↗</span>'; }
-  });
-
-  async function showApp() {
-    $('auth').classList.add('hidden'); $('app').classList.remove('hidden');
-    $('uname').innerHTML = escapeHTML(profile.username) + '<br><small class="muted">Vault owner</small>';
-    $('avatar').textContent = profile.username.charAt(0).toUpperCase();
-    $('today').textContent = new Intl.DateTimeFormat(undefined, { weekday:'long', month:'long', day:'numeric' }).format(new Date()).toUpperCase();
-    await loadFiles();
-    await loadGlobalNote();
-    setupNavigation();
-  }
-  async function loadFiles() {
-    if (!user || loading) return;
-    loading = true; $('list').classList.add('loading');
-    try {
-      const { data, error } = await db.from('jvault_files').select('*').eq('owner_id', user.id).order('created_at', { ascending: false });
-      if (error) throw error;
-      files = data || [];
-      const validIds = new Set(files.filter(isImage).map(f => f.id));
-      selectedImages.forEach(id => { if (!validIds.has(id)) selectedImages.delete(id); });
-      renderFiles();
-    } catch (error) { toast('Could not load files: ' + error.message, true); }
-    finally { loading = false; $('list').classList.remove('loading'); }
-  }
-  async function loadGlobalNote() {
-    if (!user) return;
-    $('globalNoteStatus').textContent = 'Loading…';
-    try {
-      const { data, error } = await db.from('jvault_notes').select('id,content').eq('owner_id', user.id).maybeSingle();
-      if (error) throw error;
-      globalNoteRowId = data?.id || null;
-      $('globalNoteInput').value = data?.content || '';
-      updateGlobalNoteCount();
-      $('globalNoteStatus').textContent = 'All changes saved';
-    } catch (error) {
-      $('globalNoteStatus').textContent = 'Could not load notes';
-      toast('Text notes could not load: ' + error.message, true);
-    }
-  }
-  function updateGlobalNoteCount() {
-    const count = $('globalNoteInput').value.length;
-    $('globalCharCount').textContent = count.toLocaleString() + ' characters';
-  }
-  async function saveGlobalNote() {
-    if (!user) return;
-    const content = $('globalNoteInput').value;
-    $('globalNoteStatus').textContent = 'Saving…';
-    try {
-      const { data, error } = await db.from('jvault_notes').upsert(
-        { owner_id: user.id, content, updated_at: new Date().toISOString() },
-        { onConflict: 'owner_id' }
-      ).select('id').single();
-      if (error) throw error;
-      globalNoteRowId = data.id;
-      $('globalNoteStatus').textContent = 'All changes saved';
-    } catch (error) {
-      $('globalNoteStatus').textContent = 'Save failed — try again';
-      toast('Text note could not save: ' + error.message, true);
-    }
-  }
-  function setupNavigation() {
-    if (navigationInitialized) return;
-    navigationInitialized = true;
-    $('sidebarToggle').setAttribute('aria-expanded', window.matchMedia('(max-width: 760px)').matches ? 'false' : 'true');
-    document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => {
-      if (button.dataset.page === 'text') {
-        page = 'text';
-        document.querySelectorAll('.nav-item[data-view]').forEach(item => item.classList.remove('active'));
-      } else {
-        page = 'files';
-        view = button.dataset.view || 'all';
-        document.querySelectorAll('.nav-item[data-view]').forEach(item => item.classList.toggle('active', item === button));
-      }
-      document.querySelectorAll('.nav-item[data-page="text"]').forEach(item => item.classList.toggle('active', page === 'text'));
-      $('filesPage').classList.toggle('active', page === 'files');
-      $('textPage').classList.toggle('active', page === 'text');
-      $('crumbCurrent').textContent = page === 'text' ? 'Text notes' : (view === 'recent' ? 'Recent' : view === 'categories' ? 'Categories' : 'Files');
-      if (page === 'files') renderFiles();
-      closeMobileSidebar();
-    }));
-    $('sidebarToggle').addEventListener('click', () => {
-      if (window.matchMedia('(max-width: 760px)').matches) {
-        $('app').classList.remove('sidebar-collapsed');
-        $('app').classList.toggle('sidebar-open');
-        $('sidebarToggle').setAttribute('aria-expanded', $('app').classList.contains('sidebar-open') ? 'true' : 'false');
-      } else {
-        $('app').classList.toggle('sidebar-collapsed');
-        $('sidebarToggle').setAttribute('aria-expanded', $('app').classList.contains('sidebar-collapsed') ? 'false' : 'true');
-      }
-    });
-    $('sidebarScrim').addEventListener('click', closeMobileSidebar);
-    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobileSidebar(); });
-    $('globalNoteInput').addEventListener('input', () => {
-      updateGlobalNoteCount();
-      $('globalNoteStatus').textContent = 'Unsaved changes…';
-      clearTimeout(globalNoteTimer);
-      globalNoteTimer = setTimeout(saveGlobalNote, 700);
-    });
-    $('copyGlobalNote').addEventListener('click', async () => {
-      const value = $('globalNoteInput').value;
-      if (!value) return toast('There is no text to copy.', true);
-      try { await navigator.clipboard.writeText(value); toast('Text copied to clipboard.'); }
-      catch (_) { $('globalNoteInput').focus(); $('globalNoteInput').select(); toast('Clipboard blocked. Select the text and copy manually.', true); }
-    });
-    $('clearGlobalNote').addEventListener('click', () => {
-      if (!$('globalNoteInput').value) return;
-      if (!confirm('Clear all text in your notes?')) return;
-      $('globalNoteInput').value = '';
-      updateGlobalNoteCount();
-      $('globalNoteStatus').textContent = 'Unsaved changes…';
-      clearTimeout(globalNoteTimer);
-      globalNoteTimer = setTimeout(saveGlobalNote, 100);
-    });
-  }
-  function closeMobileSidebar() {
-    $('app').classList.remove('sidebar-open');
-    const mobile = window.matchMedia('(max-width: 760px)').matches;
-    const collapsed = $('app').classList.contains('sidebar-collapsed');
-    $('sidebarToggle').setAttribute('aria-expanded', mobile || collapsed ? 'false' : 'true');
-  }
-
-  function isImage(file) { return /^image\//i.test(file.mime_type || '') || /\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(file.name || ''); }
-
-  function renderFiles() {
-    const query = $('search').value.trim().toLowerCase();
-    const previousCategory = $('filter').value;
-    const categories = [...new Set(files.map(f => f.category || 'Uncategorized'))].sort((a,b) => a.localeCompare(b));
-    $('filter').innerHTML = '<option value="">All categories</option>' + categories.map(c => '<option value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('');
-    if (categories.includes(previousCategory)) $('filter').value = previousCategory;
-    const used = files.reduce((sum, f) => sum + Number(f.size_bytes || 0), 0);
-    $('sf').textContent = files.length; $('ss').textContent = bytes(used); $('statDocs').textContent = files.length;
-    $('statSpace').textContent = bytes(used); $('scat').textContent = categories.length;
-    $('usageText').textContent = bytes(used) + ' used';
-
-    let items = files.filter(f => (!query || f.name.toLowerCase().includes(query) || String(f.category).toLowerCase().includes(query)) && (!$('filter').value || (f.category || 'Uncategorized') === $('filter').value));
-    if (view === 'recent') items = items.slice(0, 8);
-    if ($('sort').value === 'old') items.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-    if ($('sort').value === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
-    if ($('sort').value === 'size') items.sort((a,b) => Number(b.size_bytes) - Number(a.size_bytes));
-    $('filesTitle').textContent = view === 'recent' ? 'Recently added' : view === 'categories' ? 'Browse by category' : 'Your documents';
-    if (view === 'categories') {
-      if (!items.length) { renderEmpty(items); updateBulkUI(); return; }
-      const groups = categories.map(category => ({ category, rows: items.filter(f => (f.category || 'Uncategorized') === category) })).filter(g => g.rows.length);
-      $('list').innerHTML = groups.map(group => '<div class="category-group"><div class="category-group-heading">' + escapeHTML(group.category) + '<span>' + group.rows.length + '</span></div>' + group.rows.map(fileRow).join('') + '</div>').join('');
-    } else {
-      if (!items.length) { renderEmpty(items); updateBulkUI(); return; }
-      $('list').innerHTML = '<div class="thead"><span>Document</span><span>Category</span><span>Added</span><span style="text-align:right">Actions</span></div>' + items.map(fileRow).join('');
-    }
-    updateBulkUI();
-  }
-  function updateBulkUI() {
-    const visibleImages = [...document.querySelectorAll('[data-image-select]')];
-    const selectedVisible = visibleImages.filter(el => selectedImages.has(el.dataset.imageSelect)).length;
-    $('selectedCount').textContent = selectedImages.size + ' image' + (selectedImages.size === 1 ? '' : 's') + ' selected';
-    const totalImages = files.filter(isImage).length;
-    $('bulkBar').classList.toggle('hidden', totalImages === 0);
-    $('downloadSelected').disabled = selectedImages.size === 0;
-    $('deleteSelected').disabled = selectedImages.size === 0;
-    $('selectVisible').checked = visibleImages.length > 0 && selectedVisible === visibleImages.length;
-    $('selectVisible').disabled = visibleImages.length === 0;
-
-    $('deleteAll').disabled = files.length === 0;
-  }
-  function renderEmpty(items) {
-    $('list').innerHTML = '<div class="empty"><strong>' + (files.length ? 'No matching documents' : 'Your vault is ready') + '</strong><p>' + (files.length ? 'Try another search or filter.' : 'Upload your first document to get started.') + '</p></div>';
-  }
-  function fileRow(file) {
-    const ext = (file.name.split('.').pop() || 'FILE').slice(0,4).toUpperCase();
-    const date = new Date(file.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
-    const cats = ['Uncategorized','Documents','Work','Personal','Finance','Education','Images','Other', ...files.map(f => f.category || 'Uncategorized')].filter((v,i,a) => a.indexOf(v) === i).sort();
-    return '<div class="file-entry"><div class="row"><div class="filename">' + (isImage(file) ? '<input class="image-select" type="checkbox" data-image-select="' + file.id + '" aria-label="Select image ' + escapeHTML(file.name) + '" ' + (selectedImages.has(file.id) ? 'checked' : '') + '>' : '') + '<div class="ext">' + escapeHTML(ext) + '</div><div style="min-width:0"><strong title="' + escapeHTML(file.name) + '">' + escapeHTML(file.name) + '</strong><small>' + bytes(file.size_bytes) + '</small></div></div><div class="catcol"><select class="category" data-cat="' + file.id + '" aria-label="Category for ' + escapeHTML(file.name) + '">' + cats.map(c => '<option ' + (c === (file.category || 'Uncategorized') ? 'selected' : '') + ' value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>').join('') + '</select></div><div class="datecol muted">' + date + '</div><div class="actions"><button class="iconbtn note-toggle" data-act="note" data-id="' + file.id + '" title="Open text note" aria-label="Open text note for ' + escapeHTML(file.name) + '">Text</button><button class="iconbtn" data-act="download" data-id="' + file.id + '" title="Download" aria-label="Download ' + escapeHTML(file.name) + '">↓</button><button class="iconbtn" data-act="rename" data-id="' + file.id + '" title="Rename" aria-label="Rename ' + escapeHTML(file.name) + '">✎</button><button class="iconbtn" data-act="delete" data-id="' + file.id + '" title="Delete" aria-label="Delete ' + escapeHTML(file.name) + '">×</button></div></div><div class="file-note-panel hidden" data-note-panel="' + file.id + '"><div class="file-note-heading"><div><strong>Text note</strong><span>Saved to your JVault account and synced across devices</span></div><button type="button" class="secondary-btn note-copy" data-copy-note="' + file.id + '">Copy text</button></div><textarea class="file-note-input" data-note-input="' + file.id + '" rows="3" maxlength="20000" placeholder="Write or paste text here…">' + escapeHTML(file.note || '') + '</textarea><div class="file-note-footer"><span data-note-status="' + file.id + '">Changes save automatically</span><span>20,000 characters max</span></div></div></div>';
-  }
-
-  function setUploadProgress(visible, status = '', detail = '', percent = 0) {
-    const panel = $('uploadProgress');
-    panel.classList.toggle('hidden', !visible);
-    $('uploadStatus').textContent = status;
-    $('uploadDetail').textContent = detail;
-    const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
-    $('uploadPercent').textContent = Math.round(safePercent) + '%';
-    $('uploadProgressFill').style.width = safePercent + '%';
-    $('upload').disabled = visible;
-
-  }
-
-  async function uploadFiles(fileList) {
-    if (!user) return;
-    const selected = [...fileList];
-    if (!selected.length) return;
-    const valid = selected.filter(file => file.size <= MAX_FILE);
-    const oversized = selected.length - valid.length;
-    if (oversized) toast(oversized + ' file' + (oversized === 1 ? ' was' : 's were') + ' skipped because the limit is 50 MB per file.', true);
-    if (!valid.length) { $('picker').value = ''; return; }
-
-    let completed = 0, succeeded = 0, failed = 0;
-    setUploadProgress(true, 'Uploading your files…', 'Starting upload 1 of ' + valid.length, 0);
-    $('drop').classList.add('uploading');
-    try {
-      for (let index = 0; index < valid.length; index++) {
-        const file = valid[index];
-        const base = index / valid.length * 100;
-        setUploadProgress(true, 'Uploading your files…', 'File ' + (index + 1) + ' of ' + valid.length + ': ' + file.name, base);
-        const clean = file.name.normalize('NFKC').replace(/[^a-zA-Z0-9._ -]/g, '_').replace(/\s+/g, '_').slice(0,180) || 'document';
-        const path = user.id + '/' + crypto.randomUUID() + '-' + clean;
-        try {
-          const { error: uploadError } = await db.storage.from(BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type || 'application/octet-stream' });
-          if (uploadError) throw uploadError;
-          const { error: insertError } = await db.from('jvault_files').insert({ owner_id:user.id, name:file.name, storage_path:path, size_bytes:file.size, mime_type:file.type || 'application/octet-stream', category:'Uncategorized' });
-          if (insertError) { await db.storage.from(BUCKET).remove([path]); throw insertError; }
-          succeeded++;
-        } catch (error) {
-          failed++;
-          toast('Upload failed for ' + file.name + ': ' + error.message, true);
-        }
-        completed++;
-        setUploadProgress(true, failed ? 'Uploading files…' : 'Uploading your files…', completed + ' of ' + valid.length + ' processed', completed / valid.length * 100);
-      }
-      setUploadProgress(true, 'Finishing up…', 'Refreshing your vault', 100);
-      await loadFiles();
-      if (succeeded && !failed) toast(succeeded + ' file' + (succeeded === 1 ? '' : 's') + ' uploaded successfully.');
-      else if (succeeded && failed) toast(succeeded + ' uploaded, ' + failed + ' failed.', true);
-      else if (!succeeded) toast('No files were uploaded successfully.', true);
-    } finally {
-      $('picker').value = '';
-      $('drop').classList.remove('uploading');
-      setUploadProgress(false);
-    }
-  }
-  $('upload').addEventListener('click', () => $('picker').click());
-
-  $('picker').addEventListener('change', e => uploadFiles(e.target.files));
-  ['search','filter','sort'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', renderFiles));
-  const drop = $('drop');
-  ['dragenter','dragover'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.style.background = '#eaf4fc'; }));
-  ['dragleave','drop'].forEach(type => drop.addEventListener(type, e => { e.preventDefault(); drop.style.background = ''; }));
-  drop.addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
-
-  $('list').addEventListener('change', async event => {
-    const select = event.target.closest('select[data-cat]'); if (!select || !user) return;
-    const file = files.find(f => f.id === select.dataset.cat); if (!file) return;
-    select.disabled = true;
-    try {
-      const { error } = await db.from('jvault_files').update({ category:select.value, updated_at:new Date().toISOString() }).eq('id', file.id).eq('owner_id', user.id);
-      if (error) throw error;
-      file.category = select.value; toast('Category updated.'); renderFiles();
-    } catch (error) { toast('Category update failed: ' + error.message, true); }
-    finally { select.disabled = false; }
-  });
-  const noteTimers = new Map();
-  async function saveFileNote(fileId, value) {
-    const file = files.find(item => item.id === fileId);
-    const status = document.querySelector('[data-note-status="' + fileId + '"]');
-    if (!file || !user) return;
-    if (status) status.textContent = 'Saving…';
-    try {
-      const { error } = await db.from('jvault_files').update({ note:value, updated_at:new Date().toISOString() }).eq('id', fileId).eq('owner_id', user.id);
-      if (error) throw error;
-      file.note = value;
-      if (status) status.textContent = 'Saved';
-    } catch (error) {
-      if (status) status.textContent = 'Could not save. ' + (error.message || 'Try again.');
-      toast('Note save failed: ' + (error.message || 'Please try again.'), true);
-    }
-  }
-  $('list').addEventListener('input', event => {
-    const area = event.target.closest('textarea[data-note-input]');
-    if (!area || !user) return;
-    const fileId = area.dataset.noteInput;
-    const status = document.querySelector('[data-note-status="' + fileId + '"]');
-    if (status) status.textContent = 'Unsaved changes…';
-    clearTimeout(noteTimers.get(fileId));
-    noteTimers.set(fileId, setTimeout(() => saveFileNote(fileId, area.value), 650));
-  });
-  $('list').addEventListener('click', async event => {
-    const copyButton = event.target.closest('button[data-copy-note]');
-    if (copyButton) {
-      const area = document.querySelector('textarea[data-note-input="' + copyButton.dataset.copyNote + '"]');
-      if (!area) return;
-      try {
-        await navigator.clipboard.writeText(area.value);
-        toast(area.value ? 'Text copied to clipboard.' : 'The note is empty.', !area.value);
-      } catch (_) {
-        area.focus(); area.select();
-        toast('Clipboard access was blocked. Select the text and copy it manually.', true);
-      }
-      return;
-    }
-    const button = event.target.closest('button[data-act]'); if (!button || !user) return;
-    const file = files.find(f => f.id === button.dataset.id); if (!file) return;
-    button.disabled = true;
-    try {
-      if (button.dataset.act === 'note') {
-        const panel = document.querySelector('[data-note-panel="' + file.id + '"]');
-        if (panel) {
-          panel.classList.toggle('hidden');
-          if (!panel.classList.contains('hidden')) panel.querySelector('textarea').focus();
-        }
-      } else if (button.dataset.act === 'download') {
-        const { data, error } = await db.storage.from(BUCKET).createSignedUrl(file.storage_path, 60, { download:file.name });
-        if (error) throw error;
-        const link = document.createElement('a'); link.href = data.signedUrl; link.download = file.name; link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
-        toast('Secure download started.');
-      } else if (button.dataset.act === 'rename') {
-        let name = prompt('Rename document', file.name);
-        if (name === null) return;
-        name = name.trim(); if (!name || name.length > 255) throw new Error('Name must be 1–255 characters.');
-        const { error } = await db.from('jvault_files').update({ name, updated_at:new Date().toISOString() }).eq('id', file.id).eq('owner_id', user.id);
-        if (error) throw error;
-        toast('Document renamed.'); await loadFiles();
-      } else if (button.dataset.act === 'delete') {
-        if (!confirm('Permanently delete “' + file.name + '”? This cannot be undone.')) return;
-        const { error: removeError } = await db.storage.from(BUCKET).remove([file.storage_path]);
-        if (removeError) throw removeError;
-        const { error: deleteError } = await db.from('jvault_files').delete().eq('id', file.id).eq('owner_id', user.id);
-        if (deleteError) throw deleteError;
-        toast('Document permanently deleted.'); await loadFiles();
-      }
-    } catch (error) { toast(error.message || 'Action failed.', true); }
-    finally { button.disabled = false; }
-  });
-
-
-  async function deleteFilesBatch(targetFiles, doubleConfirm = false) {
-    if (!targetFiles.length || !user) return;
-    if (doubleConfirm) {
-      if (!confirm('DELETE ALL ' + targetFiles.length + ' FILES? This will permanently remove every file in your vault.')) return;
-      if (!confirm('FINAL WARNING: this cannot be undone. Permanently delete all ' + targetFiles.length + ' files now?')) return;
-    } else if (!confirm('Permanently delete ' + targetFiles.length + ' selected image(s)? This cannot be undone.')) return;
-    const button = doubleConfirm ? $('deleteAll') : $('deleteSelected');
-    button.disabled = true;
-    try {
-      const paths = targetFiles.map(f => f.storage_path);
-      for (let i = 0; i < paths.length; i += 100) {
-        const { error } = await db.storage.from(BUCKET).remove(paths.slice(i, i + 100));
-        if (error) throw error;
-      }
-      const ids = targetFiles.map(f => f.id);
-      const { error: dbError } = await db.from('jvault_files').delete().eq('owner_id', user.id).in('id', ids);
-      if (dbError) throw dbError;
-      ids.forEach(id => selectedImages.delete(id));
-      toast(doubleConfirm ? 'All vault files deleted.' : 'Selected images deleted.');
-      await loadFiles();
-    } catch (error) {
-      toast('Delete failed: ' + (error.message || 'Please try again.'), true);
-      await loadFiles();
-    } finally { button.disabled = false; updateBulkUI(); }
-  }
-
-  $('selectVisible').addEventListener('change', () => {
-    document.querySelectorAll('[data-image-select]').forEach(el => {
-      if ($('selectVisible').checked) selectedImages.add(el.dataset.imageSelect);
-      else selectedImages.delete(el.dataset.imageSelect);
-      el.checked = $('selectVisible').checked;
-    });
-    updateBulkUI();
-  });
-  $('clearSelected').addEventListener('click', () => {
-    selectedImages.clear(); renderFiles();
-  });
-  $('deleteSelected').addEventListener('click', () => {
-    const targets = files.filter(f => selectedImages.has(f.id) && isImage(f));
-    deleteFilesBatch(targets);
-  });
-  $('deleteAll').addEventListener('click', () => deleteFilesBatch([...files], true));
-  $('downloadSelected').addEventListener('click', async () => {
-    const targets = files.filter(f => selectedImages.has(f.id) && isImage(f));
-    if (!targets.length || !user) return;
-    const button = $('downloadSelected');
-    button.disabled = true; button.textContent = 'Preparing ZIP…';
-    try {
-      if (!window.JSZip) throw new Error('ZIP download library did not load. Refresh and try again.');
-      const zip = new window.JSZip();
-      for (const file of targets) {
-        const { data, error } = await db.storage.from(BUCKET).createSignedUrl(file.storage_path, 120);
-        if (error) throw error;
-        const response = await fetch(data.signedUrl);
-        if (!response.ok) throw new Error('Could not download ' + file.name);
-        let name = file.name, suffix = 2;
-        while (zip.file(name)) {
-          const dot = name.lastIndexOf('.');
-          name = dot > 0 ? file.name.slice(0, dot) + ' (' + suffix++ + ')' + file.name.slice(dot) : file.name + ' (' + suffix++ + ')';
-        }
-        zip.file(name, await response.blob());
-      }
-      const blob = await zip.generateAsync({ type:'blob' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url; link.download = 'jvault-images-' + new Date().toISOString().slice(0,10) + '.zip';
-      document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-      toast('ZIP download started.');
-    } catch (error) { toast('Could not prepare ZIP: ' + (error.message || 'Please try again.'), true); }
-    finally { button.textContent = 'Download selected'; button.disabled = false; }
-  });
-
-  async function signOutOfVault() {
-    const buttons = [$('logout')];
-    buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
-    try {
-      const { error } = await db.auth.signOut({ scope: 'local' });
-      if (error) throw error;
-      user = null; profile = null; files = [];
-      $('app').classList.add('hidden');
-      $('auth').classList.remove('hidden');
-      try {
-        const status = await getSetupStatus();
-        setAuthMode(!status.claimed);
-      } catch (_) {
-        setAuthMode(false);
-      }
-      toast('You have been securely signed out.');
-    } catch (error) {
-      toast('Could not sign out: ' + (error.message || 'Please try again.'), true);
-    } finally {
-      buttons.forEach(button => { button.disabled = false; button.removeAttribute('aria-busy'); });
-    }
-  }
-  $('logout').addEventListener('click', signOutOfVault);
-  db.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT' && user) {
-      user = null; profile = null; files = [];
-      $('app').classList.add('hidden'); $('auth').classList.remove('hidden');
-    }
-  });
-  init();
-  window.addEventListener('resize', () => { if (window.matchMedia('(max-width: 760px)').matches) { $('app').classList.remove('sidebar-collapsed'); closeMobileSidebar(); } else closeMobileSidebar(); });
+const SUPABASE_URL='https://dpiwdhtbhwjgatvcfkcb.supabase.co', SUPABASE_KEY='sb_publishable_PSZnTEo74jObih_6TTpXVQ_tJwzTnXY';
+const FUNCTION_URL=SUPABASE_URL+'/functions/v1/jvault', BUCKET='jvault-private', MAX_FILE=50*1024*1024;
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);
+let user=null,profile=null,files=[],folders=[],pages=[],reminders=[],activity=[],view='all',page='files',currentFolder=null,selected=new Set(),activeNote=null,noteTimer=null,toastTimer=null,loading=false,locked=false;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bytes=n=>{n=Number(n)||0;if(!n)return'0 B';let u=['B','KB','MB','GB','TB'],i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),4);return(n/1024**i).toFixed(i?1:0)+' '+u[i]};
+function toast(m,bad=false){let e=$('toast');e.textContent=m;e.className='toast'+(bad?' bad':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.add('hidden'),3600)}
+function notice(m,ok=false){let e=$('notice');e.textContent=m;e.className='notice show'+(ok?' success':'')}
+function clearNotice(){$('notice').className='notice';$('notice').textContent=''}
+function usernameEmail(n){return n.toLowerCase()+'@jvault.invalid'}
+async function getSetupStatus(){let r=await fetch(FUNCTION_URL+'/bootstrap-status',{cache:'no-store'}),j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Setup service unavailable');return j}
+function setAuthMode(setup){clearNotice();$('authhead').innerHTML=setup?'<h2>Create your vault</h2><p>Set up the one and only owner account for JVault.</p>':'<h2>Welcome back.</h2><p>Sign in to open your private workspace.</p>';$('login').classList.toggle('hidden',setup);$('setup').classList.toggle('hidden',!setup)}
+async function init(){ $('year').textContent=new Date().getFullYear();try{let{data:{session}}=await db.auth.getSession();if(session){let{data:p}=await db.from('jvault_profiles').select('username').eq('user_id',session.user.id).maybeSingle();if(p){user=session.user;profile=p;await showApp();return}await db.auth.signOut()}let s=await getSetupStatus();setAuthMode(!s.claimed)}catch(e){setAuthMode(false);notice('JVault could not reach its setup service. '+e.message)}}
+$('setup').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let username=$('su').value.trim().toLowerCase(),password=$('sp').value;if(!/^[a-z0-9_]{3,24}$/.test(username))return notice('Use 3–24 letters, numbers or underscores.');if(password.length<12)return notice('Use at least 12 characters.');if(password!==$('sc').value)return notice('Passwords do not match.');$('sb').disabled=true;try{let r=await fetch(FUNCTION_URL+'/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,bootstrapCode:$('sbc').value.trim()})}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not create account');$('setup').reset();setAuthMode(false);$('lu').value=username;notice('Owner account created. Sign in to continue.',true)}catch(x){notice(x.message)}finally{$('sb').disabled=false}});
+$('login').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let name=$('lu').value.trim().toLowerCase(),password=$('lp').value;if(!/^[a-z0-9_]{3,24}$/.test(name))return notice('Enter a valid username.');$('lb').disabled=true;try{let{data,error}=await db.auth.signInWithPassword({email:usernameEmail(name),password});if(error)throw error;let{data:p,error:pe}=await db.from('jvault_profiles').select('username').eq('user_id',data.user.id).maybeSingle();if(pe||!p){await db.auth.signOut();throw Error('This account is not registered as the JVault owner.')}user=data.user;profile=p;await showApp()}catch(x){notice(x.message==='Invalid login credentials'?'Incorrect username or password.':x.message)}finally{$('lb').disabled=false}});
+async function showApp(){ $('auth').classList.add('hidden');$('app').classList.remove('hidden');$('uname').innerHTML=esc(profile.username)+'<br><small>Vault owner</small>';$('avatar').textContent=profile.username[0].toUpperCase();$('today').textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric'}).format(new Date()).toUpperCase();await Promise.all([loadFiles(),loadFolders(),loadPages(),loadReminders(),loadActivity()]);wire();checkDueReminders();registerSW()}
+async function loadFiles(){if(!user||loading)return;loading=true;try{let{data,error}=await db.from('jvault_files').select('*').eq('owner_id',user.id).order('created_at',{ascending:false});if(error)throw error;files=data||[];renderFiles()}catch(e){toast('Files failed to load: '+e.message,true)}finally{loading=false}}
+async function loadFolders(){let{data,error}=await db.from('jvault_folders').select('*').eq('owner_id',user.id).order('name');if(error){toast('Folders failed to load: '+error.message,true);return}folders=data||[];$('scat').textContent=folders.length}
+async function loadPages(){let{data,error}=await db.from('jvault_pages').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false});if(error){toast('Notes failed to load: '+error.message,true);return}pages=data||[];$('noteCount').textContent=pages.filter(n=>!n.deleted_at&&!n.is_archived).length;if(activeNote&&!pages.some(n=>n.id===activeNote&&!n.deleted_at))activeNote=null;renderNotesList()}
+async function loadReminders(){let{data,error}=await db.from('jvault_reminders').select('*').eq('owner_id',user.id).order('due_at');if(error){toast('Reminders failed to load: '+error.message,true);return}reminders=data||[];$('reminderCount').textContent=reminders.filter(r=>!r.is_done).length;renderReminders()}
+async function loadActivity(){let{data,error}=await db.from('jvault_activity').select('*').eq('owner_id',user.id).order('created_at',{ascending:false}).limit(80);if(error)return;activity=data||[];renderActivity()}
+async function log(action,type,id,details={}){try{await db.from('jvault_activity').insert({owner_id:user.id,action,target_type:type,target_id:id||null,details})}catch(e){}}
+function isImage(f){return /^image\//i.test(f.mime_type||'')||/\.(apng|avif|bmp|gif|jpe?g|png|svg|tiff?|webp|heic|heif)$/i.test(f.name||'')}
+function isPdf(f){return f.mime_type==='application/pdf'||/\.pdf$/i.test(f.name)}
+function visibleFiles(){let q=$('search').value.trim().toLowerCase(),items=files.filter(f=>!f.deleted_at);if(view==='trash')items=files.filter(f=>!!f.deleted_at);if(view==='favorites')items=items.filter(f=>f.is_favorite);if(view==='recent')items=items.slice(0,30);if(currentFolder)items=items.filter(f=>f.folder_id===currentFolder);if(view==='folders'&&!currentFolder)items=items.filter(f=>!f.folder_id);if(view==='tags'){items=items.filter(f=>(f.tags||[]).length)}if($('filter').value)items=items.filter(f=>(f.category||'Uncategorized')===$('filter').value);if(q)items=items.filter(f=>(f.name+' '+(f.category||'')+' '+(f.tags||[]).join(' ')).toLowerCase().includes(q));let sort=$('sort').value;if(sort==='old')items.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));if(sort==='name')items.sort((a,b)=>a.name.localeCompare(b.name));if(sort==='size')items.sort((a,b)=>b.size_bytes-a.size_bytes);return items}
+function renderFiles(){let live=files.filter(f=>!f.deleted_at),used=live.reduce((s,f)=>s+Number(f.size_bytes||0),0);$('sf').textContent=live.length;$('ss').textContent=bytes(used);$('statDocs').textContent=live.length;$('statSpace').textContent=bytes(used);$('statFavorites').textContent=live.filter(f=>f.is_favorite).length;$('usageText').textContent=bytes(used)+' used';$('storagePercent').textContent='Private';$('storageFill').style.width=Math.min(100,used/(1024**3)*100)+'%';let cats=[...new Set(live.map(f=>f.category||'Uncategorized'))].sort();let old=$('filter').value;$('filter').innerHTML='<option value="">All categories</option>'+cats.map(c=>'<option>'+esc(c)+'</option>').join('');$('filter').value=cats.includes(old)?old:'';let items=visibleFiles();$('pageTitle').innerHTML=({all:'All files',recent:'Recent files',favorites:'Favorites',folders:'Folders',tags:'Tagged files',trash:'Recycle bin'}[view]||'Your files')+'<span>.</span>';$('filesTitle').textContent=({all:'Your files',recent:'Recently added',favorites:'Favorites',folders:currentFolder?'Folder contents':'Your folders',tags:'Tagged files',trash:'Recently deleted'}[view]||'Your files');$('pageSubtitle').textContent=view==='trash'?'Deleted items stay here until you permanently remove them.':'A clear view of everything you keep.';$('newFolder').classList.toggle('hidden',view==='trash');$('deleteAll').classList.toggle('hidden',view==='trash');$('folderCrumb').classList.toggle('hidden',!currentFolder);if(currentFolder){let f=folders.find(x=>x.id===currentFolder);$('folderCrumb').innerHTML='<button data-action="folder-root">Folders</button> / '+esc(f?.name||'Folder')+' <button data-action="folder-up">Clear</button>'}let folderCards=view==='folders'&&!currentFolder?folders.map(f=>'<div class="file-entry folder-entry"><div class="file-main"><div class="file-ext">DIR</div><div><strong>'+esc(f.name)+'</strong><small>'+files.filter(x=>x.folder_id===f.id&&!x.deleted_at).length+' items</small></div></div><div class="file-actions"><button class="icon-action" data-action="open-folder" data-id="'+f.id+'" title="Open folder">↗</button><button class="icon-action" data-action="rename-folder" data-id="'+f.id+'" title="Rename folder">✎</button><button class="icon-action" data-action="delete-folder" data-id="'+f.id+'" title="Delete folder">×</button></div></div>').join(''):'';if(!items.length&&!folderCards){$('list').innerHTML='<div class="empty"><strong>'+(view==='trash'?'Your bin is empty':'Nothing here yet')+'</strong><p>'+(view==='trash'?'Deleted files will appear here.':'Upload a file or create a folder to get started.')+'</p></div>'}else{$('list').classList.toggle('file-grid',$('layoutMode').value==='grid');$('list').innerHTML=folderCards+items.map(fileRow).join('')}updateBulk()}
+function fileRow(f){let ext=(f.name.split('.').pop()||'FILE').slice(0,4).toUpperCase(),date=new Date(f.created_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});let tags=(f.tags||[]).map(t=>'<span class="tag-chip">'+esc(t)+'</span>').join('');let actions=f.deleted_at?'<button class="icon-action" data-action="restore" data-id="'+f.id+'" title="Restore">↶</button><button class="icon-action" data-action="purge" data-id="'+f.id+'" title="Delete permanently">×</button>':'<button class="icon-action '+(f.is_favorite?'fav':'')+'" data-action="favorite" data-id="'+f.id+'" title="Favorite">☆</button><button class="icon-action" data-action="preview" data-id="'+f.id+'" title="Preview">⌕</button><button class="icon-action" data-action="download" data-id="'+f.id+'" title="Download">↓</button><button class="icon-action" data-action="rename" data-id="'+f.id+'" title="Rename">✎</button><button class="icon-action" data-action="tags" data-id="'+f.id+'" title="Edit tags">⌑</button><button class="icon-action" data-action="versions" data-id="'+f.id+'" title="Version history">◷</button><button class="icon-action" data-action="share" data-id="'+f.id+'" title="Create secure share link">↗</button><button class="icon-action" data-action="trash" data-id="'+f.id+'" title="Move to bin">×</button>';return '<article class="file-entry"><div class="file-main"><input type="checkbox" data-select="'+f.id+'" '+(selected.has(f.id)?'checked':'')+' aria-label="Select '+esc(f.name)+'"><div class="file-ext">'+esc(ext)+'</div><div style="min-width:0"><strong title="'+esc(f.name)+'">'+esc(f.name)+'</strong><small>'+bytes(f.size_bytes)+' · '+date+(f.checksum_sha256?' · verified':'')+'</small></div></div><div class="file-cat">'+esc(f.category||'Uncategorized')+'</div><div class="file-date">'+date+'</div><div class="file-actions">'+actions+'</div>'+(tags?'<div class="file-tags">'+tags+'</div>':'')+'</article>'}
+function updateBulk(){let n=visibleFiles().length;$('bulkBar').classList.toggle('hidden',n===0||view==='trash');$('selectedCount').textContent=selected.size+' selected';$('selectVisible').checked=n>0&&visibleFiles().every(f=>selected.has(f.id));$('downloadSelected').disabled=!selected.size;$('deleteSelected').disabled=!selected.size}
+async function activityLog(action,type,id,details){await log(action,type,id,details);loadActivity()}
+async function uploadFiles(list){let valid=[...list].filter(f=>f.size<=MAX_FILE);if(valid.length!==list.length)toast('Files over 50 MB were skipped.',true);if(!valid.length)return;let ok=0,done=0;$('uploadProgress').classList.remove('hidden');$('upload').disabled=true;for(let file of valid){try{let hash=await sha256(file),duplicate=files.find(f=>!f.deleted_at&&f.checksum_sha256===hash);if(duplicate&&!confirm('This file already exists as “'+duplicate.name+'”. Upload another copy?')){done++;continue}let clean=file.name.normalize('NFKC').replace(/[^a-zA-Z0-9._ -]/g,'_').replace(/\s+/g,'_').slice(0,180)||'document',path=user.id+'/'+crypto.randomUUID()+'-'+clean;let{error:up}=await db.storage.from(BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||'application/octet-stream'});if(up)throw up;let{data,error}=await db.from('jvault_files').insert({owner_id:user.id,name:file.name,storage_path:path,size_bytes:file.size,mime_type:file.type||'application/octet-stream',category:'Uncategorized',folder_id:currentFolder,checksum_sha256:hash}).select().single();if(error){await db.storage.from(BUCKET).remove([path]);throw error}ok++;await log('Uploaded file','file',data.id,{name:file.name})}catch(e){toast('Upload failed: '+e.message,true)}done++;$('uploadStatus').textContent='Uploading files';$('uploadPercent').textContent=Math.round(done/valid.length*100)+'%';$('uploadProgressFill').style.width=done/valid.length*100+'%';$('uploadDetail').textContent=done+' of '+valid.length+' processed'}$('uploadProgress').classList.add('hidden');$('upload').disabled=false;$('picker').value='';await loadFiles();toast(ok+' file(s) uploaded.')}
+async function sha256(file){let buf=await file.arrayBuffer(),hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function signed(file,download=false){let{data,error}=await db.storage.from(BUCKET).createSignedUrl(file.storage_path,120,{download:download?file.name:false});if(error)throw error;return data.signedUrl}
+async function preview(f){let url=await signed(f);let body=isImage(f)?'<img class="preview-image" src="'+url+'" alt="'+esc(f.name)+'">':isPdf(f)?'<iframe class="preview-frame" src="'+url+'"></iframe>':'<div class="empty"><strong>Preview unavailable for this format</strong><p>Download the file to open it on your device.</p><a href="'+url+'" target="_blank" rel="noopener">Open file</a></div>';modal('Preview · '+f.name,body,'<button class="secondary-btn" data-modal-close>Close</button><a class="primary-btn" href="'+url+'" target="_blank" rel="noopener">Open / download</a>');await db.from('jvault_files').update({last_accessed_at:new Date().toISOString()}).eq('id',f.id)}
+function modal(title,body,actions=''){let root=$('modalRoot');root.innerHTML='<div class="modal-backdrop" data-modal-backdrop><section class="modal-card"><header class="modal-head"><h3>'+esc(title)+'</h3><button class="modal-close" data-modal-close>×</button></header><div class="modal-body">'+body+'</div><footer class="modal-actions">'+actions+'</footer></section></div>';root.querySelector('[data-modal-backdrop]').addEventListener('click',e=>{if(e.target.dataset.modalBackdrop!==undefined||e.target.closest('[data-modal-close]'))root.innerHTML=''})}
+async function softDelete(f){if(!confirm('Move “'+f.name+'” to the recycle bin?'))return;let{error}=await db.from('jvault_files').update({deleted_at:new Date().toISOString()}).eq('id',f.id).eq('owner_id',user.id);if(error)return toast(error.message,true);selected.delete(f.id);await log('Moved file to recycle bin','file',f.id,{name:f.name});await loadFiles()}
+async function restoreFile(f){let{error}=await db.from('jvault_files').update({deleted_at:null}).eq('id',f.id).eq('owner_id',user.id);if(error)return toast(error.message,true);await log('Restored file','file',f.id,{name:f.name});await loadFiles()}
+async function purgeFile(f){if(!confirm('Permanently delete “'+f.name+'” and its saved versions? This cannot be undone.'))return;let{data:vs}=await db.from('jvault_file_versions').select('storage_path').eq('file_id',f.id).eq('owner_id',user.id);let paths=[f.storage_path,...(vs||[]).map(v=>v.storage_path)];let{error:se}=await db.storage.from(BUCKET).remove(paths);if(se)return toast(se.message,true);let{error}=await db.from('jvault_files').delete().eq('id',f.id).eq('owner_id',user.id);if(error)return toast(error.message,true);await log('Permanently deleted file','file',f.id,{name:f.name});await loadFiles()}
+async function renameFile(f){let name=prompt('Rename file',f.name);if(name===null)return;name=name.trim();if(!name||name.length>255)return toast('Name must be 1–255 characters.',true);let{error}=await db.from('jvault_files').update({name,updated_at:new Date().toISOString()}).eq('id',f.id).eq('owner_id',user.id);if(error)return toast(error.message,true);await log('Renamed file','file',f.id,{name});await loadFiles()}
+async function editTags(f){let value=prompt('Tags, separated by commas', (f.tags||[]).join(', '));if(value===null)return;let tags=[...new Set(value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean))].slice(0,20);let{error}=await db.from('jvault_files').update({tags,updated_at:new Date().toISOString()}).eq('id',f.id).eq('owner_id',user.id);if(error)return toast(error.message,true);await log('Updated file tags','file',f.id,{tags});await loadFiles()}
+async function createFolder(){let name=prompt('Folder name');if(!name)return;let{error}=await db.from('jvault_folders').insert({owner_id:user.id,name:name.trim(),parent_id:currentFolder});if(error)return toast(error.message,true);await log('Created folder','folder',null,{name});await loadFolders();view='folders';currentFolder=null;switchPage('files');renderFiles()}
+async function folderAction(action,id){let f=folders.find(x=>x.id===id);if(!f)return;if(action==='open-folder'){currentFolder=id;view='folders';renderFiles()}if(action==='rename-folder'){let name=prompt('Rename folder',f.name);if(name===null)return;let{error}=await db.from('jvault_folders').update({name:name.trim(),updated_at:new Date().toISOString()}).eq('id',id);if(error)return toast(error.message,true);await loadFolders();renderFiles()}if(action==='delete-folder'){if(!confirm('Delete folder “'+f.name+'”? Files inside will be moved to the root.'))return;let{error}=await db.from('jvault_folders').delete().eq('id',id).eq('owner_id',user.id);if(error)return toast(error.message,true);currentFolder=null;await loadFolders();await loadFiles()}}
+async function saveVersion(f,file){let{data:versions,error:ve}=await db.from('jvault_file_versions').select('*').eq('file_id',f.id).eq('owner_id',user.id).order('version_number',{ascending:false});if(ve)throw ve;let version=(versions?.[0]?.version_number||0)+1;let{error:up}=await db.storage.from(BUCKET).upload(user.id+'/'+crypto.randomUUID()+'-'+file.name,file,{upsert:false,contentType:file.type||'application/octet-stream'});if(up)throw up;let path=user.id+'/'+crypto.randomUUID()+'-'+file.name;/* upload is repeated below with stable path */let{error:up2}=await db.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type||'application/octet-stream'});if(up2)throw up2;let{error:ins}=await db.from('jvault_file_versions').insert({owner_id:user.id,file_id:f.id,storage_path:f.storage_path,version_number:version,size_bytes:f.size_bytes});if(ins){await db.storage.from(BUCKET).remove([path]);throw ins}let{error:upd}=await db.from('jvault_files').update({storage_path:path,size_bytes:file.size,mime_type:file.type||'application/octet-stream',checksum_sha256:await sha256(file),updated_at:new Date().toISOString()}).eq('id',f.id).eq('owner_id',user.id);if(upd)throw upd;await log('Uploaded new version','file',f.id,{version});await loadFiles()}
+async function versions(f){let{data,error}=await db.from('jvault_file_versions').select('*').eq('file_id',f.id).eq('owner_id',user.id).order('version_number',{ascending:false});if(error)return toast(error.message,true);let html='<p>Current version · '+bytes(f.size_bytes)+'</p>'+(data||[]).map(v=>'<div class="activity-row"><div><strong>Version '+v.version_number+'</strong><small>'+new Date(v.created_at).toLocaleString()+' · '+bytes(v.size_bytes)+'</small></div><button class="secondary-btn" data-version-download="'+v.id+'">Download</button></div>').join('')+'<label>Upload a replacement version</label><input id="versionPicker" type="file">';modal('Version history',html,'<button class="secondary-btn" data-modal-close>Close</button><button class="primary-btn" id="saveVersionBtn">Save new version</button>');$('saveVersionBtn').onclick=async()=>{let file=$('versionPicker').files[0];if(!file)return toast('Choose a file first.',true);try{await saveVersion(f,file);$('modalRoot').innerHTML='';toast('New version saved.')}catch(e){toast('Version failed: '+e.message,true)}};$('modalRoot').querySelectorAll('[data-version-download]').forEach(b=>b.onclick=async()=>{let v=data.find(x=>x.id===b.dataset.versionDownload);let{data:d,error:e}=await db.storage.from(BUCKET).createSignedUrl(v.storage_path,120);if(e)return toast(e.message,true);window.open(d.signedUrl,'_blank','noopener')})}
+async function shareFile(f){let{data:{session}}=await db.auth.getSession();if(!session)return;let response=await fetch(FUNCTION_URL+'/share-create',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({fileId:f.id,expiresIn:86400})});let result=await response.json().catch(()=>({}));if(!response.ok)return toast(result.error||'Could not create share link.',true);modal('Secure share link','<p>This private link expires in 24 hours. Anyone with it can download this file until it expires or you revoke it.</p><input id="shareUrl" readonly value="'+esc(result.url)+'">','<button class="secondary-btn" data-modal-close>Close</button><button id="copyShare" class="primary-btn">Copy link</button>');$('copyShare').onclick=async()=>{await navigator.clipboard.writeText(result.url);toast('Share link copied.')}}
+function switchPage(target){page=target;document.querySelectorAll('.page-view').forEach(x=>x.classList.remove('active'));let id=target==='files'?'filesPage':target+'Page';$(id)?.classList.add('active');document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===target||(target==='files'&&b.dataset.view===view)));$('crumbCurrent').textContent=target==='files'?({all:'All files',recent:'Recent',favorites:'Favorites',folders:'Folders',tags:'Tags',trash:'Recycle bin'}[view]||'Files'):target[0].toUpperCase()+target.slice(1);if(target==='files')renderFiles();if(target==='notes')renderNotesList();if(target==='reminders')renderReminders();if(target==='activity')renderActivity()}
+function renderNotesList(){let active=pages.find(n=>n.id===activeNote);let list=pages.filter(n=>!n.deleted_at&&!n.is_archived);$('notesList').innerHTML=list.length?list.map(n=>'<button class="note-list-item '+(n.id===activeNote?'active':'')+'" data-note-id="'+n.id+'"><strong>'+(n.is_pinned?'◆ ':'')+esc(n.title)+'</strong><small>'+new Date(n.updated_at).toLocaleDateString()+' · '+(n.content||'').length+' chars</small></button>').join(''):'<div class="empty"><strong>No notes yet</strong><p>Create a note to start.</p></div>';if(active){$('noteTitle').value=active.title;$('noteContent').value=active.content;$('noteChars').textContent=active.content.length+' characters';$('noteSaveStatus').textContent='Saved';$('pinNote').textContent=active.is_pinned?'Unpin':'Pin';$('archiveNote').textContent=active.is_archived?'Unarchive':'Archive';$('noteEditor')?.classList.remove('hidden')}else if(!activeNote){$('noteTitle').value='';$('noteContent').value='';$('noteChars').textContent='0 characters';$('noteSaveStatus').textContent='Choose a note or create one.'}}
+async function createNote(title='Untitled note',content=''){let{data,error}=await db.from('jvault_pages').insert({owner_id:user.id,title,content}).select().single();if(error)return toast(error.message,true);pages.unshift(data);activeNote=data.id;renderNotesList();$('noteTitle').focus();await log('Created note','note',data.id,{title})}
+async function saveNote(){let n=pages.find(x=>x.id===activeNote);if(!n)return;let title=$('noteTitle').value.trim()||'Untitled note',content=$('noteContent').value;$('noteSaveStatus').textContent='Saving…';let{data,error}=await db.from('jvault_pages').update({title,content,updated_at:new Date().toISOString()}).eq('id',n.id).eq('owner_id',user.id).select().single();if(error){$('noteSaveStatus').textContent='Save failed';toast(error.message,true);return}Object.assign(n,data);$('noteSaveStatus').textContent='All changes saved';$('noteChars').textContent=content.length.toLocaleString()+' characters';renderNotesList()}
+async function noteAction(action){let n=pages.find(x=>x.id===activeNote);if(!n)return;if(action==='pin'||action==='archive'){let key=action==='pin'?'is_pinned':'is_archived';let{error}=await db.from('jvault_pages').update({[key]:!n[key],updated_at:new Date().toISOString()}).eq('id',n.id);if(error)return toast(error.message,true);n[key]=!n[key];renderNotesList()}if(action==='delete'){if(!confirm('Move this note to the recycle bin?'))return;let{error}=await db.from('jvault_pages').update({deleted_at:new Date().toISOString()}).eq('id',n.id);if(error)return toast(error.message,true);activeNote=null;await loadPages();renderNotesList()}}
+function renderReminders(){let active=reminders.filter(r=>!r.is_done);$('reminderList').innerHTML=reminders.length?reminders.map(r=>'<div class="reminder-item '+(r.is_done?'done':'')+'"><input type="checkbox" data-reminder-done="'+r.id+'" '+(r.is_done?'checked':'')+'><div><strong>'+esc(r.title)+'</strong><small>'+new Date(r.due_at).toLocaleString()+'</small></div><button class="text-btn" data-reminder-delete="'+r.id+'">Delete</button></div>').join(''):'<div class="empty"><strong>No reminders</strong><p>Add a reminder to keep a task visible.</p></div>'}
+async function renderActivity(){ $('activityList').innerHTML=activity.length?activity.map(a=>'<div class="activity-row"><span class="activity-dot"></span><div><strong>'+esc(a.action)+'</strong><small>'+new Date(a.created_at).toLocaleString()+(a.details?.name?' · '+esc(a.details.name):'')+'</small></div></div>').join(''):'<div class="empty"><strong>No activity yet</strong><p>Changes in your vault will appear here.</p></div>'}
+function checkDueReminders(){let now=Date.now(),due=reminders.filter(r=>!r.is_done&&new Date(r.due_at).getTime()<=now);if(due.length){toast(due.length+' reminder(s) are due.');if('Notification'in window&&Notification.permission==='granted')due.forEach(r=>new Notification('JVault reminder',{body:r.title}))}}
+function wire(){if(window.jvaultWired)return;window.jvaultWired=true;
+$('upload').onclick=()=>$('picker').click();$('picker').onchange=e=>uploadFiles(e.target.files);$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('dragover')});$('drop').addEventListener('dragleave',()=>$('drop').classList.remove('dragover'));$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('dragover');uploadFiles(e.dataTransfer.files)});
+['search','filter','sort','layoutMode'].forEach(id=>$(id).addEventListener(id==='search'?'input':'change',renderFiles));$('newFolder').onclick=createFolder;$('deleteAll').onclick=async()=>{let items=files.filter(f=>!f.deleted_at);if(!items.length||!confirm('Move all '+items.length+' files to the recycle bin?'))return;let{error}=await db.from('jvault_files').update({deleted_at:new Date().toISOString()}).eq('owner_id',user.id).is('deleted_at',null);if(error)return toast(error.message,true);await log('Moved all files to recycle bin','file',null,{count:items.length});await loadFiles()};
+$('selectVisible').onchange=()=>{visibleFiles().forEach(f=>$('selectVisible').checked?selected.add(f.id):selected.delete(f.id));renderFiles()};$('list').addEventListener('change',e=>{let c=e.target.closest('[data-select]');if(c){c.checked?selected.add(c.dataset.select):selected.delete(c.dataset.select);updateBulk()}});$('clearSelected').onclick=()=>{selected.clear();renderFiles()};$('deleteSelected').onclick=async()=>{let items=files.filter(f=>selected.has(f.id)&&!f.deleted_at);if(!items.length||!confirm('Move '+items.length+' selected files to the recycle bin?'))return;let{error}=await db.from('jvault_files').update({deleted_at:new Date().toISOString()}).eq('owner_id',user.id).in('id',items.map(f=>f.id));if(error)return toast(error.message,true);selected.clear();await loadFiles()};$('downloadSelected').onclick=downloadZip;
+$('list').addEventListener('click',async e=>{let b=e.target.closest('[data-action]');if(!b)return;let a=b.dataset.action,id=b.dataset.id;if(a==='folder-root'||a==='folder-up'){currentFolder=null;renderFiles();return}if(a==='open-folder'||a==='rename-folder'||a==='delete-folder')return folderAction(a,id);let f=files.find(x=>x.id===id);if(!f)return;try{if(a==='favorite'){let{error}=await db.from('jvault_files').update({is_favorite:!f.is_favorite}).eq('id',id);if(error)throw error;f.is_favorite=!f.is_favorite;await loadFiles()}if(a==='preview')await preview(f);if(a==='download'){let u=await signed(f,true);window.open(u,'_blank','noopener');await log('Downloaded file','file',id,{name:f.name})}if(a==='rename')await renameFile(f);if(a==='tags')await editTags(f);if(a==='trash')await softDelete(f);if(a==='restore')await restoreFile(f);if(a==='purge')await purgeFile(f);if(a==='versions')await versions(f);if(a==='share')await shareFile(f)}catch(x){toast(x.message||'Action failed',true)}});
+$('newNote').onclick=()=>createNote();$('notesList').onclick=e=>{let b=e.target.closest('[data-note-id]');if(!b)return;activeNote=b.dataset.noteId;renderNotesList()};['noteTitle','noteContent'].forEach(id=>$(id).addEventListener('input',()=>{ $('noteSaveStatus').textContent='Unsaved changes…';$('noteChars').textContent=$('noteContent').value.length.toLocaleString()+' characters';clearTimeout(noteTimer);noteTimer=setTimeout(saveNote,650)}));$('pinNote').onclick=()=>noteAction('pin');$('archiveNote').onclick=()=>noteAction('archive');$('deleteNote').onclick=()=>noteAction('delete');$('copyNote').onclick=async()=>{await navigator.clipboard.writeText($('noteContent').value);toast('Note copied')};$('previewNote').onclick=()=>{$('notePreview').textContent=$('noteContent').value;$('notePreview').classList.toggle('hidden');$('noteContent').classList.toggle('hidden')};document.querySelectorAll('[data-wrap],[data-prefix]').forEach(b=>b.onclick=()=>{let t=$('noteContent'),start=t.selectionStart,end=t.selectionEnd,val=t.value;if(b.dataset.wrap){t.setRangeText(b.dataset.wrap+val.slice(start,end)+b.dataset.wrap,start,end,'select')}else{let line=val.slice(0,start).lastIndexOf('\\n')+1;t.setRangeText(b.dataset.prefix,line,line,'end')}t.dispatchEvent(new Event('input'))});
+$('reminderForm').onsubmit=async e=>{e.preventDefault();let title=$('reminderTitle').value.trim(),due=new Date($('reminderDate').value);if(!title||isNaN(due))return;let{error}=await db.from('jvault_reminders').insert({owner_id:user.id,title,due_at:due.toISOString()});if(error)return toast(error.message,true);$('reminderForm').reset();await loadReminders();await log('Created reminder','reminder',null,{title})};$('reminderList').addEventListener('change',async e=>{let id=e.target.dataset.reminderDone;if(!id)return;let{error}=await db.from('jvault_reminders').update({is_done:e.target.checked,updated_at:new Date().toISOString()}).eq('id',id);if(error)return toast(error.message,true);await loadReminders()});$('reminderList').addEventListener('click',async e=>{let id=e.target.dataset.reminderDelete;if(!id)return;if(!confirm('Delete this reminder?'))return;let{error}=await db.from('jvault_reminders').delete().eq('id',id);if(error)return toast(error.message,true);await loadReminders()});
+document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;currentFolder=null;selected.clear();switchPage('files')});document.querySelectorAll('.nav-item[data-page]').forEach(b=>b.onclick=()=>switchPage(b.dataset.page));$('settingsOpen').onclick=openSettings;$('sidebarToggle').onclick=()=>{if(innerWidth<=760)$('app').classList.toggle('sidebar-open');else $('app').classList.toggle('sidebar-collapsed')};$('sidebarScrim').onclick=()=>$('app').classList.remove('sidebar-open');$('logout').onclick=signOut;$('quickCaptureBtn').onclick=async()=>{let v=$('quickCapture').value.trim();if(!v)return;await createNote('Quick capture',v);$('quickCapture').value='';switchPage('notes')};$('quickCapture').addEventListener('keydown',e=>{if(e.key==='Enter')$('quickCaptureBtn').click()});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('search').focus()}if(e.key==='Escape')$('app').classList.remove('sidebar-open')});
+let last=Date.now();['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{last=Date.now()}));setInterval(()=>{if(user&&!locked&&Date.now()-last>15*60*1000)lockWorkspace()},30000);
+}
+async function downloadZip(){let items=files.filter(f=>selected.has(f.id)&&!f.deleted_at);if(!items.length)return;let b=$('downloadSelected');b.disabled=true;b.textContent='Preparing…';try{if(!window.JSZip)throw Error('ZIP library unavailable');let zip=new JSZip();for(let f of items){let u=await signed(f),r=await fetch(u);if(!r.ok)throw Error('Could not fetch '+f.name);zip.file(f.name,await r.blob())}let blob=await zip.generateAsync({type:'blob'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='jvault-'+new Date().toISOString().slice(0,10)+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('ZIP download started')}catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='Download ZIP'}}
+function openSettings(){modal('Workspace settings','<div><strong>Security</strong><p>JVault locks automatically after 15 minutes of inactivity.</p><button id="lockNow" class="secondary-btn">Lock workspace now</button></div><div style="margin-top:18px"><strong>Offline access</strong><p>The app shell and recent interface are cached on this device. Changes sync when you are online.</p><button id="installApp" class="secondary-btn">Install JVault</button></div><div style="margin-top:18px"><strong>Vault tools</strong><p>Scan image files for searchable text with local OCR.</p><button id="ocrAll" class="secondary-btn">Run OCR on images</button></div>','<button class="secondary-btn" data-modal-close>Close</button>');$('lockNow').onclick=()=>{ $('modalRoot').innerHTML='';lockWorkspace()};$('installApp').onclick=installPWA;$('ocrAll').onclick=runOCR}
+function lockWorkspace(){if(locked||!user)return;locked=true;modal('Workspace locked','<p>Your session is still signed in. Confirm your account password to unlock this device.</p><label>Password</label><input id="unlockPassword" type="password" autocomplete="current-password">','<button id="unlockBtn" class="primary-btn">Unlock</button>');$('unlockBtn').onclick=async()=>{let p=$('unlockPassword').value;let{error}=await db.auth.signInWithPassword({email:usernameEmail(profile.username),password:p});if(error)return toast('Incorrect password',true);locked=false;$('modalRoot').innerHTML='';toast('Workspace unlocked')}}
+async function runOCR(){let images=files.filter(f=>!f.deleted_at&&isImage(f));if(!images.length)return toast('No images to scan');if(!window.Tesseract){await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')}if(!window.Tesseract)return toast('OCR engine could not load',true);modal('Local OCR','<p id="ocrStatus">Preparing OCR engine…</p><div id="ocrResult"></div>','<button class="secondary-btn" data-modal-close>Close</button>');let worker;try{worker=await Tesseract.createWorker('eng');let count=0;for(let f of images){$('ocrStatus').textContent='Reading '+f.name+' ('+(count+1)+'/'+images.length+')';let url=await signed(f),{data}=await worker.recognize(url),txt=data.text.trim();if(txt){let tags=(f.tags||[]);let{error}=await db.from('jvault_files').update({note:(f.note?f.note+'\\n\\n':'')+'[OCR]\\n'+txt,tags:[...new Set([...tags,'ocr'])]}).eq('id',f.id);if(error)throw error}count++}$('ocrStatus').textContent='OCR finished. Text was saved to each image’s file note.';await log('Completed OCR scan','file',null,{count})}catch(e){$('ocrStatus').textContent='OCR failed: '+e.message}finally{if(worker)await worker.terminate();await loadFiles()}}
+function loadScript(src){return new Promise(resolve=>{let s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=resolve;document.head.appendChild(s)})}
+async function installPWA(){if(window.deferredInstall){window.deferredInstall.prompt();window.deferredInstall=null}else toast('Use your browser menu and choose Add to Home Screen.')}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.deferredInstall=e});
+function registerSW(){if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+async function signOut(){let{error}=await db.auth.signOut({scope:'local'});if(error)return toast(error.message,true);user=null;profile=null;files=[];$('app').classList.add('hidden');$('auth').classList.remove('hidden');let s=await getSetupStatus().catch(()=>({claimed:true}));setAuthMode(!s.claimed)}
+db.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&user){user=null;profile=null;$('app').classList.add('hidden');$('auth').classList.remove('hidden')}});
+init();
 })();
