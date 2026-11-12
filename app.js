@@ -72,7 +72,7 @@ async function runOCR(){let images=files.filter(f=>!f.deleted_at&&isImage(f));if
 function loadScript(src){return new Promise(resolve=>{let s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=resolve;document.head.appendChild(s)})}
 async function installPWA(){if(window.deferredInstall){window.deferredInstall.prompt();window.deferredInstall=null}else toast('Use your browser menu and choose Add to Home Screen.')}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.deferredInstall=e});
-function registerSW(){if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+function registerSW(){if(!('serviceWorker'in navigator))return;let hosted=location.hostname.endsWith('supabase.co');let url=hosted?FUNCTION_URL+'/sw.js':'./sw.js',scope=hosted?'/functions/v1/':'./';navigator.serviceWorker.register(url,{scope}).catch(()=>{})}
 async function signOut(){let{error}=await db.auth.signOut({scope:'local'});if(error)return toast(error.message,true);user=null;profile=null;files=[];$('app').classList.add('hidden');$('auth').classList.remove('hidden');let s=await getSetupStatus().catch(()=>({claimed:true}));setAuthMode(!s.claimed)}
 db.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&user){user=null;profile=null;$('app').classList.add('hidden');$('auth').classList.remove('hidden')}});
 init();
