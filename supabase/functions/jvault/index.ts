@@ -4,20 +4,47 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@f2a0a4627eaea35d297b34d8289c83c9714ae094/";
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-jvault-dispatch", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+const APP_ORIGIN = new URL(SUPABASE_URL).origin;
+const securityHeaders: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+  "Permissions-Policy": "camera=(self), microphone=(), geolocation=(), payment=()",
+  "Cross-Origin-Resource-Policy": "same-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+};
+const cors = {
+  "Access-Control-Allow-Origin": APP_ORIGIN,
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-jvault-dispatch",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Vary": "Origin"
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...securityHeaders, ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+});
+const textResponse = (body: string, status = 404, extraHeaders: Record<string, string> = {}) =>
+  new Response(body, {
+    status,
+    headers: { ...securityHeaders, "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", ...extraHeaders }
+  });
 async function serveSite(): Promise<Response> {
   const response = await fetch(SOURCE + "index.html", { headers: { "Cache-Control": "no-cache" } });
   if (!response.ok) return new Response("JVault frontend could not be loaded from its repository.", { status: 503 });
   let html = await response.text();
   html = html.replace(/href=["\']\.\/style\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/style.css"').replace(/src=["\']\.\/app\.js(?:\?[^"\']*)?["\']/i, 'src="' + SUPABASE_URL + '/functions/v1/jvault/app.js"').replace(/href=["\']\.\/manifest\.webmanifest["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/manifest.webmanifest"').replace(/href=["\']\.\/icon\.svg["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
   return new Response(html, { headers: {
-    "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://dpiwdhtbhwjgatvcfkcb.supabase.co; frame-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co https://cdn.jsdelivr.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    ...securityHeaders,
+    ...cors,
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://dpiwdhtbhwjgatvcfkcb.supabase.co; frame-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co https://cdn.jsdelivr.net; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   }});
 }
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== APP_ORIGIN) return json({ error: "Forbidden origin." }, 403);
+  if (request.method === "OPTIONS") return new Response("ok", { headers: { ...securityHeaders, ...cors } });
   const normalizedPath = new URL(request.url).pathname.replace(/\/$/, "");
   const route = normalizedPath.split("/").pop() || "";
 
@@ -26,7 +53,25 @@ Deno.serve(async (request: Request) => {
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
     if (!token) return null;
     const { data, error } = await admin.auth.getUser(token);
-    return error ? null : data.user;
+    if (error || !data.user) return null;
+    const { data: profile, error: profileError } = await admin
+      .from("jvault_profiles").select("user_id").eq("user_id", data.user.id).maybeSingle();
+    if (profileError || !profile) return null;
+    return data.user;
+  };
+
+  const readJsonBody = async (maxBytes: number): Promise<{ body: any | null; error: "large" | "invalid" | null }> => {
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return { body: null, error: "large" };
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > maxBytes) return { body: null, error: "large" };
+    try {
+      const body = JSON.parse(raw);
+      if (!body || typeof body !== "object" || Array.isArray(body)) return { body: null, error: "invalid" };
+      return { body, error: null };
+    } catch {
+      return { body: null, error: "invalid" };
+    }
   };
 
   const getPushConfig = async () => {
@@ -78,15 +123,19 @@ Deno.serve(async (request: Request) => {
   if (route === "push-subscribe" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to register this device." }, 401);
-    let body: { subscription?: any };
-    try { body = await request.json(); } catch { return json({ error: "Invalid subscription." }, 400); }
+    const parsed = await readJsonBody(8192);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid subscription." }, 400);
+    const body = parsed.body as { subscription?: any };
     const sub = body.subscription;
-    if (!sub || !validPushEndpoint(sub.endpoint) || typeof sub.keys?.p256dh !== "string" || typeof sub.keys?.auth !== "string") {
+    if (!sub || !validPushEndpoint(sub.endpoint) ||
+        typeof sub.keys?.p256dh !== "string" || sub.keys.p256dh.length > 512 ||
+        typeof sub.keys?.auth !== "string" || sub.keys.auth.length > 256) {
       return json({ error: "The browser returned an invalid push subscription." }, 400);
     }
     const { error } = await admin.from("jvault_push_subscriptions").upsert({
       owner_id: owner.id, endpoint: sub.endpoint, subscription: sub,
-      user_agent: request.headers.get("user-agent") || null, updated_at: new Date().toISOString()
+      user_agent: (request.headers.get("user-agent") || "").slice(0, 512) || null, updated_at: new Date().toISOString()
     }, { onConflict: "endpoint" });
     if (error) {
       console.error("push subscribe:", error);
@@ -97,8 +146,10 @@ Deno.serve(async (request: Request) => {
   if (route === "push-unsubscribe" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to manage notifications." }, 401);
-    let body: { endpoint?: unknown };
-    try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid request." }, 400);
+    const body = parsed.body as { endpoint?: unknown };
     if (typeof body.endpoint !== "string" || !validPushEndpoint(body.endpoint)) return json({ error: "Invalid endpoint." }, 400);
     const { error } = await admin.from("jvault_push_subscriptions").delete().eq("owner_id", owner.id).eq("endpoint", body.endpoint);
     if (error) return json({ error: "Could not remove this device." }, 500);
@@ -193,17 +244,20 @@ Deno.serve(async (request: Request) => {
   if (route === "share-create" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to create a share link." }, 401);
-    let body: { fileId?: unknown; expiresIn?: unknown };
-    try { body = await request.json(); } catch { return json({ error: "Invalid request body." }, 400); }
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid request body." }, 400);
+    const body = parsed.body as { fileId?: unknown; expiresIn?: unknown };
     const fileId = typeof body.fileId === "string" ? body.fileId : "";
-    if (!fileId) return json({ error: "A file is required." }, 400);
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(fileId)) return json({ error: "A valid file identifier is required." }, 400);
     const { data: file, error: fileError } = await admin.from("jvault_files").select("id,name,deleted_at").eq("id", fileId).eq("owner_id", owner.id).maybeSingle();
     if (fileError || !file || file.deleted_at) return json({ error: "File not found." }, 404);
     const random = crypto.getRandomValues(new Uint8Array(32));
     const token = Array.from(random, b => b.toString(16).padStart(2, "0")).join("");
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
-    const seconds = Math.min(2592000, Math.max(300, Number(body.expiresIn) || 86400));
+    const requestedExpiry = typeof body.expiresIn === "number" && Number.isFinite(body.expiresIn) ? body.expiresIn : 86400;
+    const seconds = Math.min(2592000, Math.max(300, Math.floor(requestedExpiry)));
     const expiresAt = new Date(Date.now() + seconds * 1000).toISOString();
     const { error: insertError } = await admin.from("jvault_shares").insert({ owner_id: owner.id, file_id: fileId, token_hash: tokenHash, expires_at: expiresAt });
     if (insertError) return json({ error: "Could not create share link." }, 500);
@@ -212,26 +266,31 @@ Deno.serve(async (request: Request) => {
   if (route === "share-revoke" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to revoke share links." }, 401);
-    let body: { fileId?: unknown };
-    try { body = await request.json(); } catch { return json({ error: "Invalid request body." }, 400); }
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid request body." }, 400);
+    const body = parsed.body as { fileId?: unknown };
     const fileId = typeof body.fileId === "string" ? body.fileId : "";
-    if (!fileId) return json({ error: "A file is required." }, 400);
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(fileId)) return json({ error: "A valid file identifier is required." }, 400);
     const { error } = await admin.from("jvault_shares").update({ revoked_at: new Date().toISOString() }).eq("owner_id", owner.id).eq("file_id", fileId).is("revoked_at", null);
     if (error) return json({ error: "Could not revoke share links." }, 500);
     return json({ success: true });
   }
   if (normalizedPath.includes("/share/") && request.method === "GET") {
     const token = route;
-    if (!/^[a-f0-9]{64}$/.test(token)) return new Response("This share link is invalid.", { status: 404 });
+    if (!/^[a-f0-9]{64}$/.test(token)) return textResponse("This share link is invalid.", 404);
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
     const { data: share } = await admin.from("jvault_shares").select("id,file_id,expires_at,revoked_at").eq("token_hash", tokenHash).maybeSingle();
-    if (!share || share.revoked_at || new Date(share.expires_at).getTime() <= Date.now()) return new Response("This share link has expired or was revoked.", { status: 410 });
+    if (!share || share.revoked_at || new Date(share.expires_at).getTime() <= Date.now()) return textResponse("This share link has expired or was revoked.", 410);
     const { data: file } = await admin.from("jvault_files").select("name,storage_path,deleted_at").eq("id", share.file_id).maybeSingle();
-    if (!file || file.deleted_at) return new Response("This file is no longer available.", { status: 404 });
+    if (!file || file.deleted_at) return textResponse("This file is no longer available.", 404);
     const { data: signed, error } = await admin.storage.from("jvault-private").createSignedUrl(file.storage_path, 60, { download: file.name });
-    if (error || !signed?.signedUrl) return new Response("Could not open the shared file.", { status: 500 });
-    return Response.redirect(signed.signedUrl, 302);
+    if (error || !signed?.signedUrl) return textResponse("Could not open the shared file.", 500);
+    return new Response(null, {
+      status: 302,
+      headers: { ...securityHeaders, "Cache-Control": "no-store", "Location": signed.signedUrl }
+    });
   }
 
   if (request.method === "GET" && ["style.css", "app.js", "manifest.webmanifest", "icon.svg", "sw.js"].includes(route)) {
@@ -240,7 +299,7 @@ Deno.serve(async (request: Request) => {
     let body = await response.text();
     const contentTypes: Record<string, string> = { "style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "manifest.webmanifest": "application/manifest+json; charset=utf-8", "icon.svg": "image/svg+xml", "sw.js": "text/javascript; charset=utf-8" };
     if (route === "manifest.webmanifest") body = body.replace('"start_url": "./"', '"start_url": "' + SUPABASE_URL + '/functions/v1/jvault"').replace('"scope": "./"', '"scope": "' + SUPABASE_URL + '/functions/v1/"').replace('"src": "./icon.svg"', '"src": "' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
-    const headers: Record<string, string> = { "Content-Type": contentTypes[route], "Cache-Control": route === "sw.js" ? "no-cache" : "public, max-age=300", "X-Content-Type-Options": "nosniff" };
+    const headers: Record<string, string> = { ...securityHeaders, ...cors, "Content-Type": contentTypes[route], "Cache-Control": route === "sw.js" ? "no-cache" : "public, max-age=300" };
     if (route === "sw.js") headers["Service-Worker-Allowed"] = "/functions/v1/";
     return new Response(body, { headers });
   }
@@ -250,6 +309,10 @@ Deno.serve(async (request: Request) => {
     return json({ claimed: data.claimed });
   }
   if (route === "bootstrap" && request.method === "POST") {
+    const { data: setupState, error: setupStateError } = await admin
+      .from("jvault_bootstrap_state").select("claimed").eq("id", 1).single();
+    if (setupStateError || !setupState) return json({ error: "Setup status is unavailable." }, 500);
+    if (setupState.claimed) return json({ error: "One-time owner setup is already closed." }, 410);
     let body: { username?: unknown; password?: unknown; bootstrapCode?: unknown };
     try { const raw = await request.text(); if (raw.length > 8000) return json({ error: "Request is too large." }, 413); body = JSON.parse(raw); }
     catch { return json({ error: "Invalid request body." }, 400); }
