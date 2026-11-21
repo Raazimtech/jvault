@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateVapidKey, vapidPublicKey, send as sendWebPush } from "jsr:@daaku/webpush@0.2.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@f2a0a4627eaea35d297b34d8289c83c9714ae094/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
@@ -19,9 +20,9 @@ const cors = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Vary": "Origin"
 };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) => new Response(JSON.stringify(body), {
   status,
-  headers: { ...securityHeaders, ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
+  headers: { ...securityHeaders, ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extraHeaders }
 });
 const textResponse = (body: string, status = 404, extraHeaders: Record<string, string> = {}) =>
   new Response(body, {
@@ -74,6 +75,24 @@ Deno.serve(async (request: Request) => {
     }
   };
 
+  let rateKeyPromise: Promise<CryptoKey> | null = null;
+  const getRateKey = () => {
+    if (!rateKeyPromise) {
+      rateKeyPromise = crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(SERVICE_ROLE_KEY),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+    }
+    return rateKeyPromise;
+  };
+  const keyedHash = async (value: string) => {
+    const signature = await crypto.subtle.sign("HMAC", await getRateKey(), new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(signature), b => b.toString(16).padStart(2, "0")).join("");
+  };
+
   const getPushConfig = async () => {
     const { data: existing, error: readError } = await admin.from("jvault_push_config").select("id,vapid_private_jwk,vapid_public_key,dispatch_secret").eq("id", 1).maybeSingle();
     if (readError) throw readError;
@@ -108,6 +127,91 @@ Deno.serve(async (request: Request) => {
       urgency: "high"
     });
   };
+
+  if (route === "login" && request.method === "POST") {
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid sign-in request." }, 400);
+
+    const body = parsed.body as { username?: unknown; password?: unknown };
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!/^[a-z0-9_]{3,24}$/.test(username) || password.length < 1 || password.length > 128) {
+      return json({ error: "Incorrect username or password." }, 401);
+    }
+
+    const forwardedIp = request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-real-ip") || "unknown";
+    const safeIp = forwardedIp.trim().slice(0, 128) || "unknown";
+    const accountKey = await keyedHash("jvault-account\n" + username);
+    const pairKey = await keyedHash("jvault-ip-account\n" + safeIp + "\n" + username);
+
+    const { data: rateRows, error: rateError } = await admin.rpc("jvault_login_rate_check", {
+      p_pair_key: pairKey,
+      p_account_key: accountKey
+    });
+    if (rateError) {
+      console.error("login rate check:", rateError);
+      return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
+    }
+    const rate = Array.isArray(rateRows) ? rateRows[0] : rateRows;
+    if (!rate || rate.allowed !== true) {
+      const retry = Math.max(1, Math.min(3600, Number(rate?.retry_after_seconds) || 900));
+      return json(
+        { error: "Too many unsuccessful attempts. Try again later.", retryAfter: retry },
+        429,
+        { "Retry-After": String(retry) }
+      );
+    }
+
+    let authResponse: Response;
+    let authPayload: any = null;
+    try {
+      authResponse = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+        method: "POST",
+        headers: {
+          "apikey": AUTH_API_KEY,
+          "Content-Type": "application/json",
+          "X-Client-Info": "jvault-login-proxy"
+        },
+        body: JSON.stringify({
+          email: username + "@jvault.invalid",
+          password
+        })
+      });
+      authPayload = await authResponse.json().catch(() => null);
+    } catch (error) {
+      console.error("login upstream:", error);
+      return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
+    }
+
+    if (authResponse.status === 429) {
+      return json({ error: "Authentication is rate limited. Try again later." }, 429, { "Retry-After": "60" });
+    }
+
+    const succeeded = authResponse.ok &&
+      typeof authPayload?.access_token === "string" &&
+      typeof authPayload?.refresh_token === "string";
+    const { error: recordError } = await admin.rpc("jvault_login_rate_record", {
+      p_pair_key: pairKey,
+      p_account_key: accountKey,
+      p_succeeded: succeeded
+    });
+    if (recordError) {
+      console.error("login rate record:", recordError);
+      return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
+    }
+    if (!succeeded) return json({ error: "Incorrect username or password." }, 401);
+
+    return json({
+      access_token: authPayload.access_token,
+      refresh_token: authPayload.refresh_token,
+      expires_in: authPayload.expires_in,
+      expires_at: authPayload.expires_at,
+      token_type: authPayload.token_type,
+      user: authPayload.user
+    });
+  }
 
   if (route === "push-config" && request.method === "POST") {
     const owner = await authUser();
