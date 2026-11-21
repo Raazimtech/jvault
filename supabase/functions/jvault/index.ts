@@ -39,7 +39,7 @@ async function serveSite(): Promise<Response> {
     ...cors,
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "no-store",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://dpiwdhtbhwjgatvcfkcb.supabase.co; frame-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co https://cdn.jsdelivr.net; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://dpiwdhtbhwjgatvcfkcb.supabase.co; frame-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://dpiwdhtbhwjgatvcfkcb.supabase.co https://cdn.jsdelivr.net; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   }});
 }
 Deno.serve(async (request: Request) => {
