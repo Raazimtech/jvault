@@ -6,6 +6,13 @@ const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@f6163e305d125b53627f7db0cad029bf9d7c4990/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
+const ALLOWED_ORIGINS = new Set([
+  APP_ORIGIN,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500"
+]);
 const securityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
@@ -44,8 +51,17 @@ async function serveSite(): Promise<Response> {
 }
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get("Origin");
-  if (origin && origin !== APP_ORIGIN) return json({ error: "Forbidden origin." }, 403);
-  if (request.method === "OPTIONS") return new Response("ok", { headers: { ...securityHeaders, ...cors } });
+  const allowedOrigin = !origin || ALLOWED_ORIGINS.has(origin);
+  const requestCors = {
+    ...cors,
+    "Access-Control-Allow-Origin": origin && allowedOrigin ? origin : APP_ORIGIN
+  };
+  const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) => new Response(JSON.stringify(body), {
+    status,
+    headers: { ...securityHeaders, ...requestCors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extraHeaders }
+  });
+  if (!allowedOrigin) return json({ error: "Forbidden origin." }, 403);
+  if (request.method === "OPTIONS") return new Response("ok", { headers: { ...securityHeaders, ...requestCors } });
   const normalizedPath = new URL(request.url).pathname.replace(/\/$/, "");
   const route = normalizedPath.split("/").pop() || "";
 
