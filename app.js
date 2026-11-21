@@ -54,9 +54,7 @@ function showSqlPrank(){
       <div class="sql-prank-speech"><p class="sql-prank-roast">That was your master plan? A quote, an OR statement, and confidence? I've seen fish with better attack strategies. I'm a penguin, not your penetration-testing lab. Let me nap.</p></div>
      </div>
     </div>
-    <div class="sql-prank-proof"><span>LOGIN NOT SENT</span><span>NO QUERY EXECUTED</span><span>NO DATA CHANGED</span></div>
     <button type="button" class="sql-prank-close">Give the penguin a vacation</button>
-    <p class="sql-prank-foot">This is a browser-side JVault Easter egg. Your login was not submitted.</p>
    </div>
   </section>`;
  document.body.appendChild(overlay);
