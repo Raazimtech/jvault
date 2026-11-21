@@ -189,9 +189,20 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Authentication is rate limited. Try again later." }, 429, { "Retry-After": "60" });
     }
 
-    const succeeded = authResponse.ok &&
+    const authenticated = authResponse.ok &&
       typeof authPayload?.access_token === "string" &&
-      typeof authPayload?.refresh_token === "string";
+      typeof authPayload?.refresh_token === "string" &&
+      typeof authPayload?.user?.id === "string";
+    let succeeded = false;
+    if (authenticated) {
+      const { data: ownerProfile, error: profileError } = await admin
+        .from("jvault_profiles").select("user_id").eq("user_id", authPayload.user.id).maybeSingle();
+      if (profileError) {
+        console.error("login owner verification:", profileError);
+        return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
+      }
+      succeeded = !!ownerProfile;
+    }
     const { error: recordError } = await admin.rpc("jvault_login_rate_record", {
       p_pair_key: pairKey,
       p_account_key: accountKey,
