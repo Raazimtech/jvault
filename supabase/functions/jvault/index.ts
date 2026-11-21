@@ -93,6 +93,41 @@ Deno.serve(async (request: Request) => {
     return Array.from(new Uint8Array(signature), b => b.toString(16).padStart(2, "0")).join("");
   };
 
+  const ownerRateLimit = async (ownerId: string, action: string): Promise<Response | null> => {
+    const forwardedIp = request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-real-ip") || "unknown";
+    const safeIp = forwardedIp.trim().slice(0, 128) || "unknown";
+    const accountKey = await keyedHash("jvault-api-account\n" + action + "\n" + ownerId);
+    const pairKey = await keyedHash("jvault-api-ip-account\n" + action + "\n" + safeIp + "\n" + ownerId);
+    const { data: rateRows, error: rateError } = await admin.rpc("jvault_login_rate_check", {
+      p_pair_key: pairKey,
+      p_account_key: accountKey
+    });
+    if (rateError) {
+      console.error("API rate check:", rateError);
+      return json({ error: "This action is temporarily unavailable." }, 503);
+    }
+    const rate = Array.isArray(rateRows) ? rateRows[0] : rateRows;
+    if (!rate || rate.allowed !== true) {
+      const retry = Math.max(1, Math.min(3600, Number(rate?.retry_after_seconds) || 900));
+      return json(
+        { error: "Too many requests. Try again later.", retryAfter: retry },
+        429,
+        { "Retry-After": String(retry) }
+      );
+    }
+    const { error: recordError } = await admin.rpc("jvault_login_rate_record", {
+      p_pair_key: pairKey,
+      p_account_key: accountKey,
+      p_succeeded: false
+    });
+    if (recordError) {
+      console.error("API rate record:", recordError);
+      return json({ error: "This action is temporarily unavailable." }, 503);
+    }
+    return null;
+  };
+
   const getPushConfig = async () => {
     const { data: existing, error: readError } = await admin.from("jvault_push_config").select("id,vapid_private_jwk,vapid_public_key,dispatch_secret").eq("id", 1).maybeSingle();
     if (readError) throw readError;
@@ -227,6 +262,8 @@ Deno.serve(async (request: Request) => {
   if (route === "push-config" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to enable notifications." }, 401);
+    const limited = await ownerRateLimit(owner.id, "push-config");
+    if (limited) return limited;
     try {
       const config = await getPushConfig();
       return json({ publicKey: config.vapid_public_key });
@@ -238,6 +275,8 @@ Deno.serve(async (request: Request) => {
   if (route === "push-subscribe" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to register this device." }, 401);
+    const limited = await ownerRateLimit(owner.id, "push-subscribe");
+    if (limited) return limited;
     const parsed = await readJsonBody(8192);
     if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
     if (parsed.error) return json({ error: "Invalid subscription." }, 400);
@@ -261,6 +300,8 @@ Deno.serve(async (request: Request) => {
   if (route === "push-unsubscribe" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to manage notifications." }, 401);
+    const limited = await ownerRateLimit(owner.id, "push-unsubscribe");
+    if (limited) return limited;
     const parsed = await readJsonBody(4096);
     if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
     if (parsed.error) return json({ error: "Invalid request." }, 400);
@@ -273,6 +314,8 @@ Deno.serve(async (request: Request) => {
   if (route === "push-test" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to test notifications." }, 401);
+    const limited = await ownerRateLimit(owner.id, "push-test");
+    if (limited) return limited;
     try {
       const config = await getPushConfig();
       const { data: subs, error } = await admin.from("jvault_push_subscriptions").select("id,endpoint,subscription").eq("owner_id", owner.id);
@@ -359,6 +402,8 @@ Deno.serve(async (request: Request) => {
   if (route === "share-create" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to create a share link." }, 401);
+    const limited = await ownerRateLimit(owner.id, "share-create");
+    if (limited) return limited;
     const parsed = await readJsonBody(4096);
     if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
     if (parsed.error) return json({ error: "Invalid request body." }, 400);
@@ -381,6 +426,8 @@ Deno.serve(async (request: Request) => {
   if (route === "share-revoke" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to revoke share links." }, 401);
+    const limited = await ownerRateLimit(owner.id, "share-revoke");
+    if (limited) return limited;
     const parsed = await readJsonBody(4096);
     if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
     if (parsed.error) return json({ error: "Invalid request body." }, 400);
