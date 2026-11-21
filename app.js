@@ -35,13 +35,42 @@ function showSqlPrank(){
  overlay.setAttribute('role','dialog');
  overlay.setAttribute('aria-modal','true');
  overlay.setAttribute('aria-labelledby','sqlPrankTitle');
- overlay.innerHTML='<section class="sql-prank-card"><div class="sql-prank-top"><span class="sql-prank-alert-dot"></span> JVAULT SECURITY THEATRE <span class="sql-prank-code"># 001</span></div><div class="sql-prank-scan" aria-live="polite"><div class="sql-prank-scan-mark">!</div><h2>Suspicious syntax detected.</h2><p>Giving the penguin a moment to review your life choices…</p><div class="sql-prank-scan-line"><span></span></div></div><div class="sql-prank-reveal"><div class="sql-prank-label">PAYLOAD REVIEW COMPLETE</div><img class="sql-prank-penguin" src="'+FUNCTION_URL+'/penguin%20tired.png" alt="A very tired penguin employee"><h2 id="sqlPrankTitle">Bro. SQL injection? 💀</h2><p class="sql-prank-roast">You brought a 2009 hacking tutorial to a private vault. The database is fine. The penguin is filing for annual leave.</p><div class="sql-prank-proof"><span>REQUEST STOPPED</span><span>NO QUERY EXECUTED</span><span>NO DATA CHANGED</span></div><button type="button" class="sql-prank-close">I’ll behave. Let the penguin rest.</button><p class="sql-prank-foot">This was a harmless JVault security joke. Your login was not submitted.</p></div></section>';
+ overlay.innerHTML=`
+  <section class="sql-prank-card">
+   <div class="sql-prank-top"><span class="sql-prank-alert-dot"></span> JVAULT SECURITY THEATRE <span class="sql-prank-code"># 001</span></div>
+   <div class="sql-prank-scan" aria-live="polite">
+    <div class="sql-prank-scan-mark">!</div>
+    <h2>Suspicious syntax detected.</h2>
+    <p>Calling the penguin. He's not happy about this.</p>
+    <div class="sql-prank-scan-line"><span></span></div>
+   </div>
+   <div class="sql-prank-reveal">
+    <div class="sql-prank-label">A VERY TIRED SECURITY REVIEWER</div>
+    <div class="sql-prank-reveal-layout">
+     <div class="sql-prank-character"><img class="sql-prank-penguin" src="${FUNCTION_URL}/penguin%20tired.png" alt="The exhausted JVault penguin"></div>
+     <div class="sql-prank-dialogue">
+      <div class="sql-prank-speaker">PENGUIN SUPPORT</div>
+      <h2 id="sqlPrankTitle">You really tried SQL injection? 💀</h2>
+      <div class="sql-prank-speech"><p class="sql-prank-roast">That was your master plan? A quote, an OR statement, and confidence? I've seen fish with better attack strategies. I'm a penguin, not your penetration-testing lab. Let me nap.</p></div>
+     </div>
+    </div>
+    <div class="sql-prank-proof"><span>LOGIN NOT SENT</span><span>NO QUERY EXECUTED</span><span>NO DATA CHANGED</span></div>
+    <button type="button" class="sql-prank-close">Give the penguin a vacation</button>
+    <p class="sql-prank-foot">This is a browser-side JVault Easter egg. Your login was not submitted.</p>
+   </div>
+  </section>`;
  document.body.appendChild(overlay);
- let revealTimer=setTimeout(()=>overlay.classList.add('revealed'),1100);
- let dismissTimer=setTimeout(close,8500);
+ const revealTimer=setTimeout(()=>{
+  overlay.classList.add('revealed');
+  overlay.querySelector('.sql-prank-close')?.focus();
+ },1100);
  const button=overlay.querySelector('.sql-prank-close');
  function onKey(event){if(event.key==='Escape')close()}
- function close(){clearTimeout(revealTimer);clearTimeout(dismissTimer);document.removeEventListener('keydown',onKey);overlay.remove()}
+ function close(){
+  clearTimeout(revealTimer);
+  document.removeEventListener('keydown',onKey);
+  overlay.remove();
+ }
  button.addEventListener('click',close);
  document.addEventListener('keydown',onKey);
 }
@@ -54,7 +83,7 @@ async function getSetupStatus(){let r=await fetch(FUNCTION_URL+'/bootstrap-statu
 function setAuthMode(setup){clearNotice();$('authhead').innerHTML=setup?'<h2>Create your vault</h2><p>Set up the one and only owner account for JVault.</p>':'<h2>Welcome back.</h2><p>Sign in to open your private workspace.</p>';$('login').classList.toggle('hidden',setup);$('setup').classList.toggle('hidden',!setup)}
 async function init(){ $('year').textContent=new Date().getFullYear();try{let{data:{session}}=await db.auth.getSession();if(session){let{data:p}=await db.from('jvault_profiles').select('username').eq('user_id',session.user.id).maybeSingle();if(p){user=session.user;profile=p;await showApp();return}await db.auth.signOut()}let s=await getSetupStatus();setAuthMode(!s.claimed)}catch(e){setAuthMode(false);notice('JVault could not reach its setup service. '+e.message)}}
 $('setup').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let username=$('su').value.trim().toLowerCase(),password=$('sp').value;if(!/^[a-z0-9_]{3,24}$/.test(username))return notice('Use 3–24 letters, numbers or underscores.');if(password.length<12)return notice('Use at least 12 characters.');if(password!==$('sc').value)return notice('Passwords do not match.');$('sb').disabled=true;try{let r=await fetch(FUNCTION_URL+'/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,bootstrapCode:$('sbc').value.trim()})}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not create account');$('setup').reset();setAuthMode(false);$('lu').value=username;notice('Owner account created. Sign in to continue.',true)}catch(x){notice(x.message)}finally{$('sb').disabled=false}});
-$('login').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let name=$('lu').value.trim().toLowerCase(),password=$('lp').value;if(looksLikeSqlInjection(name)||looksLikeSqlInjection(password)){$('lu').value='';$('lp').value='';showSqlPrank();return}if(!/^[a-z0-9_]{3,24}$/.test(name))return notice('Enter a valid username.');if(!password){notice('Enter your password.');$('lp').focus();return}$('lb').disabled=true;try{let response=await fetch(FUNCTION_URL+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:name,password})}),result=await response.json().catch(()=>({}));if(response.status===429){let seconds=Number(response.headers.get('Retry-After'))||Number(result.retryAfter)||900;throw Error('Too many unsuccessful attempts. Try again in '+Math.ceil(seconds/60)+' minute(s).')}if(!response.ok)throw Error(result.error||'Incorrect username or password.');if(!result.access_token||!result.refresh_token)throw Error('Sign-in response was incomplete.');let{data:sessionData,error:sessionError}=await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});if(sessionError)throw sessionError;let signedUser=sessionData.user;if(locked&&lockedUserId&&signedUser.id!==lockedUserId){await db.auth.signOut({scope:'local'});throw Error('This is not the account that locked this vault.')}let{data:p,error:pe}=await db.from('jvault_profiles').select('username').eq('user_id',signedUser.id).maybeSingle();if(pe||!p){await db.auth.signOut({scope:'local'});throw Error('Unable to verify this JVault account.')}user=signedUser;profile=p;locked=false;lockedUserId=null;$('lu').readOnly=false;await showApp()}catch(x){notice(x.message==='Invalid login credentials'?'Incorrect username or password.':x.message)}finally{$('lb').disabled=false}});
+$('login').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let name=$('lu').value.trim().toLowerCase(),password=$('lp').value;if(looksLikeSqlInjection(name)){$('lu').value='';$('lp').value='';showSqlPrank();return}if(!/^[a-z0-9_]{3,24}$/.test(name))return notice('Enter a valid username.');if(!password){notice('Enter your password.');$('lp').focus();return}$('lb').disabled=true;try{let response=await fetch(FUNCTION_URL+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:name,password})}),result=await response.json().catch(()=>({}));if(response.status===429){let seconds=Number(response.headers.get('Retry-After'))||Number(result.retryAfter)||900;throw Error('Too many unsuccessful attempts. Try again in '+Math.ceil(seconds/60)+' minute(s).')}if(!response.ok)throw Error(result.error||'Incorrect username or password.');if(!result.access_token||!result.refresh_token)throw Error('Sign-in response was incomplete.');let{data:sessionData,error:sessionError}=await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});if(sessionError)throw sessionError;let signedUser=sessionData.user;if(locked&&lockedUserId&&signedUser.id!==lockedUserId){await db.auth.signOut({scope:'local'});throw Error('This is not the account that locked this vault.')}let{data:p,error:pe}=await db.from('jvault_profiles').select('username').eq('user_id',signedUser.id).maybeSingle();if(pe||!p){await db.auth.signOut({scope:'local'});throw Error('Unable to verify this JVault account.')}user=signedUser;profile=p;locked=false;lockedUserId=null;$('lu').readOnly=false;await showApp()}catch(x){notice(x.message==='Invalid login credentials'?'Incorrect username or password.':x.message)}finally{$('lb').disabled=false}});
 async function showApp(){ $('auth').classList.add('hidden');$('app').classList.remove('hidden');$('uname').innerHTML=esc(profile.username)+'<br><small>Vault owner</small>';$('avatar').textContent=profile.username[0].toUpperCase();$('today').textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric'}).format(new Date()).toUpperCase();await Promise.all([loadFiles(),loadFolders(),loadPages(),loadReminders(),loadActivity()]);if(!wired){wire();wired=true}checkDueReminders();if(!window.jvaultReminderTimer)window.jvaultReminderTimer=setInterval(checkDueReminders,60000);registerSW()}
 async function loadFiles(){if(!user||loading)return;loading=true;try{let{data,error}=await db.from('jvault_files').select('*').eq('owner_id',user.id).order('created_at',{ascending:false});if(error)throw error;files=data||[];renderFiles()}catch(e){toast('Files failed to load: '+e.message,true)}finally{loading=false}}
 async function loadFolders(){let{data,error}=await db.from('jvault_folders').select('*').eq('owner_id',user.id).order('name');if(error){toast('Folders failed to load: '+error.message,true);return}folders=data||[];$('scat').textContent=folders.length}
