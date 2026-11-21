@@ -77,3 +77,33 @@
 @keyframes sql-prank-scan{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
 @media(max-width:480px){.sql-prank-card{padding:20px 16px;border-radius:20px}.sql-prank-scan{padding:36px 6px 28px}.sql-prank-penguin{max-height:27vh}.sql-prank-proof span{font-size:8px;padding:6px 7px}}
 @media(prefers-reduced-motion:reduce){.sql-prank-overlay,.sql-prank-overlay.revealed .sql-prank-reveal,.sql-prank-scan-line span{animation:none}}
+
+/* Penguin SQL-injection Easter egg: character + speech bubble layout */
+.sql-prank-card{width:min(100%,760px);text-align:center}
+.sql-prank-reveal-layout{display:grid;grid-template-columns:minmax(190px,.82fr) minmax(0,1.18fr);align-items:center;gap:22px;margin:18px 0 12px;text-align:left}
+.sql-prank-character{display:flex;align-items:center;justify-content:center;min-width:0}
+.sql-prank-penguin{width:100%;max-width:290px;max-height:360px;object-fit:contain;margin:0 auto}
+.sql-prank-dialogue{min-width:0}
+.sql-prank-speaker{margin:0 0 10px;color:#4c91b9;font-size:10px;font-weight:800;letter-spacing:.16em}
+.sql-prank-dialogue h2{margin:0 0 13px;color:#17364e;font:800 clamp(23px,4vw,34px)/1.12 Manrope,sans-serif;letter-spacing:-.035em}
+.sql-prank-speech{position:relative;padding:17px 18px;border:1px solid #d7e6f0;border-radius:18px 18px 18px 5px;background:#fff;box-shadow:0 8px 24px rgba(32,74,102,.07)}
+.sql-prank-roast{max-width:none;margin:0;color:#526d82;font-size:14px;line-height:1.7}
+.sql-prank-proof{margin:18px auto 16px}
+.sql-prank-close{font-size:14px;min-height:52px}
+.sql-prank-foot{margin:12px 0 0}
+@media(max-width:540px){
+ .sql-prank-card{padding:18px 14px}
+ .sql-prank-reveal-layout{grid-template-columns:minmax(112px,.72fr) minmax(0,1.28fr);gap:12px;margin:14px 0 10px}
+ .sql-prank-penguin{max-height:250px;max-width:100%}
+ .sql-prank-dialogue h2{font-size:clamp(19px,5vw,25px)}
+ .sql-prank-speech{padding:12px}
+ .sql-prank-roast{font-size:12px;line-height:1.55}
+ .sql-prank-proof{gap:5px}
+ .sql-prank-proof span{font-size:8px;padding:6px 7px}
+ .sql-prank-close{font-size:13px}
+}
+@media(max-width:360px){
+ .sql-prank-reveal-layout{grid-template-columns:100px minmax(0,1fr);gap:9px}
+ .sql-prank-dialogue h2{font-size:18px}
+ .sql-prank-roast{font-size:11px}
+}
