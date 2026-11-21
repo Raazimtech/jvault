@@ -4,7 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@f2a0a4627eaea35d297b34d8289c83c9714ae094/";
+const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@706115ff346b1a84c652332f7ac7610c00283a86/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
 const securityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
