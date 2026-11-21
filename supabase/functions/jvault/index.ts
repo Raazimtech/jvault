@@ -8,6 +8,7 @@ const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@f6163e305d125b5362
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
 const ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
+  "https://raazimtech.github.io",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://localhost:5500",
