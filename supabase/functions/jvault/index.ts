@@ -478,9 +478,12 @@ Deno.serve(async (request: Request) => {
     const response = await fetch(SOURCE + encodeURIComponent(route), { headers: { "Cache-Control": "no-cache" } });
     if (!response.ok) return new Response("JVault asset unavailable.", { status: 503, headers: securityHeaders });
     const contentTypes: Record<string, string> = { "style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "manifest.webmanifest": "application/manifest+json; charset=utf-8", "icon.svg": "image/svg+xml", "sw.js": "text/javascript; charset=utf-8", "penguin tired.png": "image/png" };
-    const headers: Record<string, string> = { ...securityHeaders, ...cors, "Content-Type": contentTypes[route], "Cache-Control": route === "sw.js" ? "no-cache" : "public, max-age=3600" };
+    const headers: Record<string, string> = { ...securityHeaders, ...requestCors, "Content-Type": contentTypes[route], "Cache-Control": route === "sw.js" ? "no-cache" : "public, max-age=3600" };
     if (route === "sw.js") headers["Service-Worker-Allowed"] = "/functions/v1/";
-    if (route === "penguin tired.png") return new Response(await response.arrayBuffer(), { headers });
+    if (route === "penguin tired.png") {
+      headers["Cross-Origin-Resource-Policy"] = "cross-origin";
+      return new Response(await response.arrayBuffer(), { headers });
+    }
     let body = await response.text();
     if (route === "manifest.webmanifest") body = body.replace('"start_url": "./"', '"start_url": "' + SUPABASE_URL + '/functions/v1/jvault"').replace('"scope": "./"', '"scope": "' + SUPABASE_URL + '/functions/v1/"').replace('"src": "./icon.svg"', '"src": "' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
     return new Response(body, { headers });
