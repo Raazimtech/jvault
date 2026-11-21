@@ -47,7 +47,7 @@ function showSqlPrank(){
    <div class="sql-prank-reveal">
     <div class="sql-prank-label">A VERY TIRED SECURITY REVIEWER</div>
     <div class="sql-prank-reveal-layout">
-     <div class="sql-prank-character"><img class="sql-prank-penguin" src="${FUNCTION_URL}/penguin%20tired.png" alt="The exhausted JVault penguin"></div>
+     <div class="sql-prank-character"><img class="sql-prank-penguin" src="https://cdn.jsdelivr.net/gh/Raazimtech/jvault@6616296daa15e40a3bfe8d59565a80e25ca5f560/penguin%20tired.png" alt="The exhausted JVault penguin"></div>
      <div class="sql-prank-dialogue">
       <div class="sql-prank-speaker">PENGUIN SUPPORT</div>
       <h2 id="sqlPrankTitle">You really tried SQL injection? 💀</h2>
