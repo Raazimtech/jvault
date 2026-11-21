@@ -47,3 +47,33 @@
   font-size:16px !important;
  }
 }
+
+/* Harmless SQL-injection decoy. It runs locally before any sign-in request is sent. */
+.sql-prank-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(9,20,30,.96);backdrop-filter:blur(16px);animation:sql-prank-in .22s ease-out}
+.sql-prank-card{width:min(100%,600px);max-height:calc(100dvh - 40px);overflow:auto;padding:26px;border:1px solid #d9e8f2;border-radius:24px;background:#f5faff;color:#294861;text-align:center;box-shadow:0 28px 100px rgba(0,0,0,.4)}
+.sql-prank-top{display:flex;align-items:center;justify-content:center;gap:9px;color:#6c8497;font-size:10px;font-weight:800;letter-spacing:.16em}
+.sql-prank-alert-dot{width:8px;height:8px;border-radius:50%;background:#e56a6a;box-shadow:0 0 0 4px #fbe5e5}
+.sql-prank-code{color:#a4b4c1}
+.sql-prank-scan{padding:45px 12px 34px}
+.sql-prank-scan-mark{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 18px;border-radius:18px;background:#fff0ed;color:#c84d45;font-size:32px;font-weight:800}
+.sql-prank-scan h2{margin:0 0 9px;color:#18354c;font:800 clamp(24px,5vw,34px)/1.15 Manrope,sans-serif}
+.sql-prank-scan p{margin:0;color:#6d8497;font-size:14px}
+.sql-prank-scan-line{height:5px;max-width:270px;margin:26px auto 0;overflow:hidden;border-radius:20px;background:#dceaf3}
+.sql-prank-scan-line span{display:block;width:38%;height:100%;border-radius:20px;background:#378fc3;animation:sql-prank-scan 1s ease-in-out infinite alternate}
+.sql-prank-reveal{display:none}
+.sql-prank-label{margin-top:10px;color:#4c91b9;font-size:10px;font-weight:800;letter-spacing:.18em}
+.sql-prank-penguin{display:block;width:min(260px,70%);max-height:30vh;object-fit:contain;margin:12px auto 4px}
+.sql-prank-reveal h2{margin:8px 0 9px;color:#17364e;font:800 clamp(28px,6vw,42px)/1.12 Manrope,sans-serif;letter-spacing:-.04em}
+.sql-prank-roast{max-width:440px;margin:0 auto;color:#5c7488;font-size:14px;line-height:1.65}
+.sql-prank-proof{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin:19px auto 18px}
+.sql-prank-proof span{padding:7px 9px;border:1px solid #d8e7f1;border-radius:999px;background:#edf5fa;color:#547188;font-size:9px;font-weight:800;letter-spacing:.07em}
+.sql-prank-close{width:100%;min-height:48px;padding:12px 18px;border:0;border-radius:12px;background:#183a55;color:#fff;font:700 13px 'DM Sans',sans-serif;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.sql-prank-close:hover{background:#245573;transform:translateY(-1px)}
+.sql-prank-foot{margin:12px 0 0;color:#8aa0b0;font-size:10px}
+.sql-prank-overlay.revealed .sql-prank-scan{display:none}
+.sql-prank-overlay.revealed .sql-prank-reveal{display:block;animation:sql-prank-reveal .3s ease-out}
+@keyframes sql-prank-in{from{opacity:0}to{opacity:1}}
+@keyframes sql-prank-reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sql-prank-scan{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@media(max-width:480px){.sql-prank-card{padding:20px 16px;border-radius:20px}.sql-prank-scan{padding:36px 6px 28px}.sql-prank-penguin{max-height:27vh}.sql-prank-proof span{font-size:8px;padding:6px 7px}}
+@media(prefers-reduced-motion:reduce){.sql-prank-overlay,.sql-prank-overlay.revealed .sql-prank-reveal,.sql-prank-scan-line span{animation:none}}
