@@ -4,7 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@ecc94e9a74ef7bef19a809420a00cb8feae8082b/";
+const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@0c477812663171bfe0851a1afcb9f9327d75c106/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
 const ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
@@ -41,7 +41,7 @@ async function serveSite(): Promise<Response> {
   const response = await fetch(SOURCE + "index.html", { headers: { "Cache-Control": "no-cache" } });
   if (!response.ok) return new Response("JVault frontend could not be loaded from its repository.", { status: 503 });
   let html = await response.text();
-  html = html.replace(/href=["\']\.\/style\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/style.css"').replace(/src=["\']\.\/app\.js(?:\?[^"\']*)?["\']/i, 'src="' + SUPABASE_URL + '/functions/v1/jvault/app.js"').replace(/href=["\']\.\/manifest\.webmanifest["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/manifest.webmanifest"').replace(/href=["\']\.\/icon\.svg["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
+  html = html.replace(/href=["\']\.\/style\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/style.css?v=${sourceSha}"').replace(/src=["\']\.\/app\.js(?:\?[^"\']*)?["\']/i, 'src="' + SUPABASE_URL + '/functions/v1/jvault/app.js?v=${sourceSha}"').replace(/href=["\']\.\/manifest\.webmanifest["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/manifest.webmanifest"').replace(/href=["\']\.\/icon\.svg["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
   return new Response(html, { headers: {
     ...securityHeaders,
     ...cors,
