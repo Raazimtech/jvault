@@ -8,7 +8,9 @@ function beginBusy(){busyRequests++;if(busyRequests===1){clearTimeout(busyHideTi
 function endBusy(){busyRequests=Math.max(0,busyRequests-1);if(!busyRequests){clearTimeout(busyShowTimer);const bar=document.getElementById('globalBusy'),label=document.getElementById('globalBusyLabel');if(!bar)return;const wait=Math.max(0,360-(Date.now()-busyShownAt));busyHideTimer=setTimeout(()=>{if(!busyRequests){bar.classList.remove('active');bar.setAttribute('aria-hidden','true');if(label){label.classList.remove('active');label.setAttribute('aria-hidden','true')}}},wait)}}
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(...args)=>{beginBusy();try{return await nativeFetch(...args)}finally{endBusy()}};
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const AUTH_STORAGE_KEY='sb-dpiwdhtbhwjgatvcfkcb-auth-token';
+try{localStorage.removeItem(AUTH_STORAGE_KEY)}catch(e){}
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storage:window.sessionStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 let user=null,profile=null,files=[],folders=[],pages=[],reminders=[],activity=[],view='all',page='files',currentFolder=null,selected=new Set(),activeNote=null,noteTimer=null,toastTimer=null,loading=false,locked=false,lockedUserId=null,wired=false;const notifiedReminders=new Set();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
