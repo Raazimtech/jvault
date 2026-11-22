@@ -1,27 +1,12 @@
-/* Tired Police Penguin repeated-login modal */
+/* The old inline callout is retired; repeated attempts use the full SQL-style modal card. */
 .police-penguin-callout{display:none!important}
-.police-penguin-overlay{
-  position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
-  padding:20px;background:rgba(9,22,34,.48);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
-  animation:police-overlay-in .2s ease-out;
+.police-penguin-overlay{z-index:10001}
+.police-penguin-card{width:min(100%,760px)!important}
+.police-penguin-card .sql-prank-penguin{
+  width:100%;max-width:310px;max-height:390px;object-fit:contain;
 }
-.police-penguin-modal{
-  width:min(100%,440px);max-height:calc(100dvh - 40px);overflow:auto;padding:26px 28px 24px;
-  border:1px solid rgba(255,255,255,.8);border-radius:24px;background:#f8fcff;
-  box-shadow:0 28px 90px rgba(5,25,42,.3);text-align:center;
-  animation:police-modal-in .26s cubic-bezier(.2,.8,.2,1);
+.police-penguin-card .sql-prank-reveal{display:block!important;animation:sql-prank-reveal .3s ease-out}
+.police-penguin-card .sql-prank-foot{margin:12px 0 0;color:#8aa0b0;font-size:10px}
+@media(max-width:540px){
+  .police-penguin-card .sql-prank-penguin{max-height:270px;max-width:100%}
 }
-.police-penguin-modal-kicker{color:#4c91b9;font-size:10px;font-weight:800;letter-spacing:.18em}
-.police-penguin-modal-image{display:block;width:min(230px,72vw);height:240px;max-height:34vh;object-fit:contain;margin:8px auto 4px}
-.police-penguin-modal-copy h2{margin:4px 0 8px;color:#17364e;font:800 clamp(23px,5vw,30px)/1.12 Manrope,sans-serif;letter-spacing:-.035em}
-.police-penguin-modal-copy p{margin:0 auto 20px;max-width:310px;color:#5c7488;font-size:15px;line-height:1.6}
-.police-penguin-dismiss{width:100%;min-height:48px;padding:12px 18px;border:0;border-radius:12px;background:#183a55;color:#fff;font:700 14px 'DM Sans',sans-serif;cursor:pointer}
-.police-penguin-dismiss:hover{background:#245573}
-body.police-penguin-modal-open{overflow:hidden}
-@keyframes police-overlay-in{from{opacity:0}to{opacity:1}}
-@keyframes police-modal-in{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:420px){
-  .police-penguin-modal{padding:22px 18px 19px;border-radius:21px}
-  .police-penguin-modal-image{width:min(220px,76vw);height:220px;max-height:32vh}
-}
-@media(prefers-reduced-motion:reduce){.police-penguin-overlay,.police-penguin-modal{animation:none}}
