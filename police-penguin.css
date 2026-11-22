@@ -1,0 +1,16 @@
+/* Tired Police Penguin login easter egg */
+.login-prank-row{display:block}
+.police-penguin-callout{display:none;align-items:center;gap:14px;margin:16px 0 2px;padding:13px;border:1px solid #d7e7f1;border-radius:16px;background:#f4faff;box-shadow:0 8px 24px rgba(32,74,102,.07);text-align:left}
+.police-penguin-callout.visible{display:flex;animation:police-penguin-in .28s ease-out}
+.police-penguin-callout img{display:block;width:112px;height:128px;flex:none;object-fit:contain}
+.police-penguin-message{margin:0;color:#294861;font:800 clamp(16px,2.2vw,21px)/1.25 Manrope,sans-serif;letter-spacing:-.035em}
+.police-penguin-kicker{margin:0 0 7px;color:#4c91b9;font-size:9px;font-weight:800;letter-spacing:.15em}
+@keyframes police-penguin-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:700px){
+ .auth-card:has(.police-penguin-callout.visible){width:min(720px,calc(100vw - 48px))}
+ .login-prank-row:has(.police-penguin-callout.visible){display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.78fr);align-items:center;gap:18px}
+ .login-prank-row:has(.police-penguin-callout.visible) .police-penguin-callout{margin:0;min-height:145px}
+ .police-penguin-callout img{width:100px;height:132px}
+}
+@media(max-width:420px){.police-penguin-callout{gap:10px;padding:10px}.police-penguin-callout img{width:88px;height:108px}.police-penguin-message{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.police-penguin-callout.visible{animation:none}}
