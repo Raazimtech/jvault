@@ -343,3 +343,12 @@ select{max-width:100%}
   html{scroll-behavior:auto}
   *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
+
+/* Control sizing exceptions: compact header/search fields must stay inside their controls. */
+.quick-capture input{min-height:0;height:100%;padding:0;border:0;background:transparent;box-shadow:none}
+.search-box input{min-height:0;height:100%;padding:0;border:0;background:transparent;box-shadow:none}
+.note-editor-head>input{min-height:0;height:auto;padding:0;border:0;background:transparent;box-shadow:none}
+@media(max-width:760px){
+  .topbar{height:calc(60px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top)}
+  .quick-capture input{font-size:16px}
+}
