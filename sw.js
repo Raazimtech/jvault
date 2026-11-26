@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='jvault-shell-v31';
+const CACHE='jvault-shell-v32';
 const scopeUrl=new URL(self.registration.scope);
 const APP_BASE=scopeUrl.pathname.includes('/functions/v1/')
   ? new URL('jvault/',scopeUrl).pathname.replace(/\/$/,'')
