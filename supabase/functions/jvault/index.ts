@@ -313,7 +313,21 @@ Deno.serve(async (request: Request) => {
     const parsed = await readJsonBody(4096);
     if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
     if (parsed.error) return json({ error: "Invalid request." }, 400);
-    const body = parsed.body as { username?: unknown; password?: unknown };
+    const body = parsed.body as { action?: unknown; username?: unknown; password?: unknown; userId?: unknown };
+    const action = typeof body.action === "string" ? body.action : "create";
+    if (action === "reset-password") {
+      const userId = typeof body.userId === "string" ? body.userId : "";
+      const password = typeof body.password === "string" ? body.password : "";
+      if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId)) return json({ error: "A valid user is required." }, 400);
+      if (password.length < 12 || password.length > 128) return json({ error: "Password must be 12–128 characters." }, 400);
+      const { data: target, error: targetError } = await admin.from("jvault_profiles").select("user_id,role").eq("user_id", userId).maybeSingle();
+      if (targetError || !target) return json({ error: "User not found." }, 404);
+      if (target.role === "admin" && userId !== owner.id) return json({ error: "Only the administrator can change their own admin password." }, 403);
+      const { error } = await admin.auth.admin.updateUserById(userId, { password });
+      if (error) return json({ error: "Could not reset password." }, 500);
+      return json({ success: true });
+    }
+    if (action !== "create") return json({ error: "Unknown user-management action." }, 400);
     const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Username must be 3–24 letters, numbers, or underscores." }, 400);
