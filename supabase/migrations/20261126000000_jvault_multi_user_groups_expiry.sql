@@ -19,8 +19,7 @@ create policy jvault_groups_create_self on public.jvault_groups for insert to au
 create policy jvault_groups_owner_update on public.jvault_groups for update to authenticated using(created_by=(select auth.uid())) with check(created_by=(select auth.uid()));
 create policy jvault_groups_owner_delete on public.jvault_groups for delete to authenticated using(created_by=(select auth.uid()));
 create policy jvault_group_members_read_self on public.jvault_group_members for select to authenticated using(user_id=(select auth.uid()));
-create policy jvault_group_members_add_by_owner on public.jvault_group_members for insert to authenticated with check(exists(select 1 from public.jvault_groups g where g.id=group_id and g.created_by=(select auth.uid())));
-create policy jvault_group_members_remove_by_owner on public.jvault_group_members for delete to authenticated using(exists(select 1 from public.jvault_groups g where g.id=group_id and g.created_by=(select auth.uid())));
+-- Membership mutations are performed only by the authenticated Edge Function using the service role.
 drop policy if exists "JVault owners manage their file records" on public.jvault_files;
 create policy jvault_files_select_owner_or_group on public.jvault_files for select to authenticated using(owner_id=(select auth.uid()) or (group_id is not null and exists(select 1 from public.jvault_group_members gm where gm.group_id=jvault_files.group_id and gm.user_id=(select auth.uid()))));
 create policy jvault_files_insert_owner on public.jvault_files for insert to authenticated with check(owner_id=(select auth.uid()) and (group_id is null or exists(select 1 from public.jvault_group_members gm where gm.group_id=jvault_files.group_id and gm.user_id=(select auth.uid()))));
