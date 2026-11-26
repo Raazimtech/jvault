@@ -7,9 +7,9 @@
 <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20261126-multiplayer-v1"><link rel="stylesheet" href="./police-penguin.css?v=20261122-v3">
+<link rel="stylesheet" href="./style.css?v=20261126-group-workspace-v2"><link rel="stylesheet" href="./police-penguin.css?v=20261122-v3">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js"></script>
-<script defer src="./police-penguin.js?v=20261122-v3"></script><script defer src="./app.js?v=20261126-groups-v5"></script>
+<script defer src="./police-penguin.js?v=20261122-v3"></script><script defer src="./app.js?v=20261126-group-workspace-v2"></script>
 </head>
 <body>
 <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -52,6 +52,7 @@
   <header class="topbar"><div class="topbar-left"><button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle navigation"><span></span><span></span></button><div class="crumb">JVault <span>/</span><strong id="crumbCurrent">All files</strong></div></div><div class="top-actions"><div class="quick-capture"><input id="quickCapture" placeholder="Quick capture a thought…" aria-label="Quick capture a thought"><button id="quickCaptureBtn" title="Capture a photo" aria-label="Capture a photo">◉</button></div><span id="today" class="today"></span><div id="avatar" class="avatar">J</div><div id="uname" class="user-name">Owner</div></div></header>
   <div class="content">
    <section id="filesPage" class="page-view active">
+    <section id="groupWorkspaceHead" class="group-workspace-head hidden"></section>
     <div class="welcome-row"><div><div class="eyebrow">YOUR LIBRARY</div><h1 id="pageTitle">All files<span>.</span></h1><p class="subtitle" id="pageSubtitle">A clear view of everything you keep.</p></div><button id="upload" class="primary-btn upload-main">＋ Upload files</button></div>
     <section class="stats-grid"><article class="stat-card"><span>FILES STORED</span><strong id="statDocs">0</strong><small>In your private library</small></article><article class="stat-card"><span>FOLDERS</span><strong id="scat">0</strong><small>Your organization</small></article><article class="stat-card"><span>FAVORITES</span><strong id="statFavorites">0</strong><small>Quick access items</small></article></section>
     <div class="upload-sharing-row"><label for="uploadGroup">Share upload with</label><select id="uploadGroup"><option value="">Private to me</option></select><small>Files shared with a group are visible to its members.</small></div>
