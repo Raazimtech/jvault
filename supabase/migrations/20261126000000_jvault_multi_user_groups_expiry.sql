@@ -28,3 +28,6 @@ create policy jvault_files_update_owner on public.jvault_files for update to aut
 create policy jvault_files_delete_owner on public.jvault_files for delete to authenticated using(owner_id=(select auth.uid()));
 drop policy if exists "JVault users read own objects" on storage.objects;
 create policy "JVault users read own or group objects" on storage.objects for select to authenticated using(bucket_id='jvault-private' and ((storage.foldername(name))[1]=(select auth.uid())::text or exists(select 1 from public.jvault_files f join public.jvault_group_members gm on gm.group_id=f.group_id where f.storage_path=storage.objects.name and gm.user_id=(select auth.uid()) and f.deleted_at is null and f.expires_at>now())));
+
+-- Preserve existing vault contents for one final seven-day download window.
+update public.jvault_files set expires_at=now()+interval '7 days', expiry_notice_sent_at=null where expires_at <= now();
