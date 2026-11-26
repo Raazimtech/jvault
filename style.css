@@ -235,3 +235,73 @@
 
 /* Simple home upload screen and dedicated Files page */
 .home-intro{margin:8px 0 26px}.home-intro h1{margin:8px 0;color:#294b65;font:800 clamp(28px,4vw,38px)/1.15 Manrope,sans-serif;letter-spacing:-1px}.home-intro h1 span{color:#5c9bc3}.home-upload-card{display:grid;justify-items:center;max-width:680px;margin:0 auto;padding:42px 30px;border:1px solid #dce8f0;border-radius:22px;background:#fff;box-shadow:0 12px 36px rgba(43,78,103,.055);text-align:center}.home-upload-icon{display:grid;place-items:center;width:58px;height:58px;margin-bottom:17px;border-radius:17px;background:#eaf4fb;color:#4d88ad;font-size:31px;font-weight:500}.home-upload-copy h2{margin:0 0 7px;color:#294b65;font-size:21px}.home-upload-copy p{max-width:420px;margin:0 auto 20px;color:#7b91a3;font-size:13px;line-height:1.65}.home-share-label{justify-self:start;width:min(100%,330px);margin:0 auto 6px;color:#617e94;font-size:11px;font-weight:700;text-align:left}.home-upload-card select{width:min(100%,330px);padding:11px 12px;border:1px solid #d8e5ee;border-radius:10px;background:#fbfdfe;color:#3d5d75}.home-select-button{width:min(100%,330px);margin-top:13px;justify-content:center}.home-upload-limit{margin-top:10px;color:#94a7b5;font-size:10px}.home-drop-target{width:min(100%,420px);margin-top:22px;padding:14px;border:1px dashed #cbdde9;border-radius:11px;color:#8298a9;font-size:11px;transition:background .15s,border-color .15s}.home-drop-target.dragover{border-color:#6da7cb;background:#edf6fc}.home-upload-progress{max-width:680px;margin:16px auto 0}.home-files-link{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:680px;margin:24px auto 0;padding:17px 19px;border:1px solid #e1eaf0;border-radius:14px;background:#f8fbfd}.home-files-link strong,.home-files-link span{display:block}.home-files-link strong{color:#45657e;font-size:12px}.home-files-link span{margin-top:4px;color:#879aaa;font-size:10px}.home-files-link .secondary-btn{flex:none}.home-intro .subtitle{margin-top:5px}@media(max-width:600px){.home-upload-card{padding:32px 18px}.home-files-link{align-items:flex-start;flex-direction:column}.home-files-link .secondary-btn{width:100%}}
+
+
+/* JVault interface consistency pass */
+:root{
+ --ink:#203f58;--muted:#71899c;--blue:#287fb5;--blue2:#176da7;
+ --line:#dce7ef;--glass:#ffffff;--glass2:#f8fbfd;
+ --shadow:0 8px 26px rgba(35,75,105,.055);--r:16px;
+}
+html,body{background:#f3f7fa;color:var(--ink)}
+.ambient{display:none}
+button,input,select,textarea{font-family:"DM Sans",sans-serif}
+button{border-radius:10px}
+.primary-btn,.secondary-btn,.quiet-danger,.text-btn,.group-open-button,.group-back-button{
+ min-height:40px;border-radius:10px;font-weight:700;letter-spacing:0;
+}
+.primary-btn{background:#236f9f;box-shadow:none}
+.primary-btn:hover{background:#195d89;transform:translateY(-1px)}
+.secondary-btn{border:1px solid #d7e4ed;background:#fff;color:#42647d}
+.secondary-btn:hover{background:#edf5fa;border-color:#c5d9e7}
+.quiet-danger{border:1px solid #f0dada;background:#fff;color:#a65b5b}
+.quiet-danger:hover{background:#fff5f4}
+input:not([type=checkbox]):not([type=radio]),select,textarea{
+ min-height:40px;border:1px solid #d9e5ed;border-radius:10px;
+ background:#fff;color:#294b65;box-shadow:none;
+}
+input:not([type=checkbox]):not([type=radio]):focus,select:focus,textarea:focus{
+ border-color:#82b4d4;outline:3px solid #dceef9;outline-offset:0;
+}
+.app-shell{background:transparent}
+.sidebar{background:#fff;border-right:1px solid #e3ebf1;box-shadow:none}
+.side-label{color:#91a4b2}
+.nav-item{border-radius:9px;color:#607b90}
+.nav-item:hover{background:#f3f8fb;color:#315d7c}
+.nav-item.active{background:#eaf4fa;color:#236f9f}
+.topbar{background:#ffffffed;border-bottom:1px solid #e3ebf1;backdrop-filter:blur(16px)}
+.content{max-width:1280px}
+.page-view h1,.home-intro h1{color:#294b65;letter-spacing:-.8px}
+.subtitle{color:#7c91a2}
+.stat-card,.library-section,.glass-panel,.note-editor,.activity-list,.reminder-form,
+.group-workspace-card,.admin-user-card,.home-upload-card{
+ border:1px solid #e1eaf0;background:#fff;box-shadow:0 5px 20px rgba(43,78,103,.035);
+}
+.stat-card,.group-workspace-card,.admin-user-card{border-radius:14px}
+.library-section{border-radius:16px}
+.library-toolbar{gap:9px}
+.search-box{border:1px solid #dce7ef;border-radius:10px;background:#fff}
+.search-box input{border:0!important;box-shadow:none!important}
+.file-entry,.note-list-item,.reminder-item{border-radius:11px}
+.file-entry{border-color:#e7eef3;background:#fff}
+.file-entry:hover{border-color:#cbdde9;background:#fbfdfe}
+.home-intro{margin-top:2px}
+.home-upload-card{border-radius:18px;padding:38px 28px}
+.home-upload-icon{border-radius:14px;background:#edf5fa;color:#397ca7}
+.home-drop-target{border-radius:10px;background:#fbfdfe}
+.home-files-link{border-color:#e1eaf0;background:#fff;border-radius:13px}
+.groups-page-banner,.group-workspace-head{border-radius:16px;background:#f7fafc;border-color:#e1eaf0}
+.groups-page-banner h1,.group-workspace-identity h1{letter-spacing:-.6px}
+.groups-total,.group-access-label,.file-shared-label{border:1px solid #e3ebf1;background:#f7fafc}
+.group-workspace-card{box-shadow:0 5px 18px rgba(43,78,103,.035)}
+.group-open-button{background:#286f9b}
+.group-open-button:hover{background:#1d5e87}
+.modal-card,.modal-panel{border:1px solid #e1eaf0;border-radius:17px;box-shadow:0 18px 55px rgba(35,75,105,.16)}
+.toast{border-radius:11px}
+.app-footer{border-top:1px solid #e6edf2;color:#91a3b0}
+@media(max-width:760px){
+ .topbar{padding-left:14px;padding-right:14px}
+ .content{padding-left:16px;padding-right:16px}
+ .home-upload-card{padding:30px 18px}
+ .library-section{padding:15px}
+}
