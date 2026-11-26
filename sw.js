@@ -24,8 +24,8 @@ self.addEventListener('fetch',event=>{
     const network=fetch(request).then(response=>{
       if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy))}
       return response;
-    });
-    return cached||network.catch(()=>caches.match(ASSET_URLS[0]));
+    }).catch(()=>null);
+    return cached||network.then(response=>response||caches.match(ASSET_URLS[0]));
   }));
 });
 self.addEventListener('push',event=>{
