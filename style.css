@@ -107,3 +107,21 @@
  .sql-prank-dialogue h2{font-size:18px}
  .sql-prank-roast{font-size:11px}
 }
+
+/* Multi-user workspace */
+.upload-sharing-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:13px 16px;border:1px solid rgba(130,170,200,.22);border-radius:14px;background:rgba(255,255,255,.48)}
+.upload-sharing-row label{font-size:12px;font-weight:700;color:#55718a}
+.upload-sharing-row select{min-width:180px;padding:9px 12px;border:1px solid #d5e3ee;border-radius:9px;background:#fff;color:#36566e}
+.upload-sharing-row small{color:#7890a4;font-size:11px}
+.groups-list{display:grid;gap:14px;margin-top:20px}
+.group-card,.admin-user-card{padding:18px 20px;border:1px solid rgba(130,170,200,.25);border-radius:16px;background:rgba(255,255,255,.72);box-shadow:0 8px 24px rgba(57,92,120,.05)}
+.group-card-head,.admin-user-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.group-card h3,.admin-user-card h3{margin:0;color:#31516b;font-size:16px}
+.group-card small,.admin-user-card small{display:block;color:#7890a4;margin-top:5px}
+.group-members{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.group-member{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:99px;background:#edf5fa;color:#54738b;font-size:12px}
+.group-member button{border:0;background:transparent;color:#a65f64;cursor:pointer;font-size:15px;padding:0}
+.group-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.group-card-actions input{min-width:140px;flex:1;padding:9px 11px;border:1px solid #d5e3ee;border-radius:9px;background:#fff}
+.group-card-actions button{border:0;border-radius:9px;padding:9px 13px;background:#e5f0f8;color:#426782;font-weight:700;cursor:pointer}
+.file-shared-label{display:inline-block;margin-left:7px;padding:3px 7px;border-radius:6px;background:#eaf4fb;color:#55748d;font-size:10px}
