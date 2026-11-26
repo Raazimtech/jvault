@@ -4,7 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@ca832dbfa35f75f47c952fbea64a4f1939f879d0/";
+const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@5e24e15ef0861cb0f06b8705b06c243de6688551/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
 const ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
@@ -278,6 +278,107 @@ Deno.serve(async (request: Request) => {
     });
   }
 
+
+  const requireAdmin = async (owner: any) => {
+    if (!owner) return false;
+    const { data, error } = await admin.from("jvault_profiles").select("role").eq("user_id", owner.id).maybeSingle();
+    return !error && data?.role === "admin";
+  };
+  if (route === "admin-users" && (request.method === "GET" || request.method === "POST")) {
+    const owner = await authUser();
+    if (!owner) return json({ error: "Sign in required." }, 401);
+    if (!await requireAdmin(owner)) return json({ error: "Administrator access required." }, 403);
+    if (request.method === "GET") {
+      const { data, error } = await admin.from("jvault_profiles").select("user_id,username,role,created_at").order("created_at", { ascending: false });
+      if (error) return json({ error: "Could not load users." }, 500);
+      return json({ users: data || [] });
+    }
+    const limited = await ownerRateLimit(owner.id, "admin-create-user");
+    if (limited) return limited;
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid request." }, 400);
+    const body = parsed.body as { username?: unknown; password?: unknown };
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Username must be 3–24 letters, numbers, or underscores." }, 400);
+    if (password.length < 12 || password.length > 128) return json({ error: "Password must be 12–128 characters." }, 400);
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email: username + "@jvault.invalid", password, email_confirm: true,
+      app_metadata: { role: "user" }, user_metadata: { username }
+    });
+    if (createError || !created.user) return json({ error: createError?.message || "Could not create user." }, 400);
+    const { error: profileError } = await admin.from("jvault_profiles").insert({ user_id: created.user.id, username, role: "user" });
+    if (profileError) { await admin.auth.admin.deleteUser(created.user.id); return json({ error: "Could not create the user profile. Username may already exist." }, 409); }
+    return json({ success: true, user: { user_id: created.user.id, username, role: "user" } }, 201);
+  }
+  if (route === "groups" && (request.method === "GET" || request.method === "POST")) {
+    const owner = await authUser();
+    if (!owner) return json({ error: "Sign in required." }, 401);
+    if (request.method === "GET") {
+      const { data: memberships, error: memberError } = await admin.from("jvault_group_members").select("group_id").eq("user_id", owner.id);
+      if (memberError) return json({ error: "Could not load groups." }, 500);
+      const ids = (memberships || []).map((m: any) => m.group_id);
+      let groups: any[] = [];
+      if (ids.length) {
+        const { data, error } = await admin.from("jvault_groups").select("id,name,created_by,created_at").in("id", ids).order("created_at", { ascending: false });
+        if (error) return json({ error: "Could not load groups." }, 500);
+        groups = data || [];
+      }
+      const { data: owned, error: ownedError } = await admin.from("jvault_groups").select("id,name,created_by,created_at").eq("created_by", owner.id).order("created_at", { ascending: false });
+      if (ownedError) return json({ error: "Could not load groups." }, 500);
+      const map = new Map<string, any>();
+      for (const g of [...groups, ...(owned || [])]) map.set(g.id, g);
+      const result = [];
+      for (const g of map.values()) {
+        const { data: members, error: listError } = await admin.from("jvault_group_members").select("user_id,member_role").eq("group_id", g.id);
+        if (listError) continue;
+        const memberIds = (members || []).map((m: any) => m.user_id);
+        const { data: profiles } = await admin.from("jvault_profiles").select("user_id,username").in("user_id", memberIds.length ? memberIds : [owner.id]);
+        const names = new Map((profiles || []).map((p: any) => [p.user_id, p.username]));
+        result.push({ ...g, members: (members || []).map((m: any) => ({ user_id: m.user_id, username: names.get(m.user_id) || "user", member_role: m.member_role })) });
+      }
+      return json({ groups: result });
+    }
+    const limited = await ownerRateLimit(owner.id, "groups-manage");
+    if (limited) return limited;
+    const parsed = await readJsonBody(4096);
+    if (parsed.error === "large") return json({ error: "Request is too large." }, 413);
+    if (parsed.error) return json({ error: "Invalid request." }, 400);
+    const body = parsed.body as { action?: unknown; name?: unknown; groupId?: unknown; username?: unknown; userId?: unknown };
+    const action = typeof body.action === "string" ? body.action : "";
+    if (action === "create") {
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (name.length < 2 || name.length > 60) return json({ error: "Group name must be 2–60 characters." }, 400);
+      const { data: group, error } = await admin.from("jvault_groups").insert({ name, created_by: owner.id }).select("id,name,created_by,created_at").single();
+      if (error || !group) return json({ error: "Could not create group." }, 500);
+      const { error: memberError } = await admin.from("jvault_group_members").insert({ group_id: group.id, user_id: owner.id, member_role: "owner" });
+      if (memberError) { await admin.from("jvault_groups").delete().eq("id", group.id); return json({ error: "Could not initialize group membership." }, 500); }
+      return json({ success: true, group }, 201);
+    }
+    const groupId = typeof body.groupId === "string" ? body.groupId : "";
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(groupId)) return json({ error: "A valid group is required." }, 400);
+    const { data: group } = await admin.from("jvault_groups").select("id,created_by").eq("id", groupId).maybeSingle();
+    if (!group || group.created_by !== owner.id) return json({ error: "Only the group owner can manage members." }, 403);
+    if (action === "add") {
+      const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+      if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Enter a valid username." }, 400);
+      const { data: target } = await admin.from("jvault_profiles").select("user_id,username").eq("username", username).maybeSingle();
+      if (!target) return json({ error: "No JVault user has that username." }, 404);
+      const { error } = await admin.from("jvault_group_members").upsert({ group_id: groupId, user_id: target.user_id, member_role: target.user_id === owner.id ? "owner" : "member" });
+      if (error) return json({ error: "Could not add this member." }, 500);
+      return json({ success: true });
+    }
+    if (action === "remove") {
+      const userId = typeof body.userId === "string" ? body.userId : "";
+      if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId) || userId === owner.id) return json({ error: "Invalid member." }, 400);
+      const { error } = await admin.from("jvault_group_members").delete().eq("group_id", groupId).eq("user_id", userId);
+      if (error) return json({ error: "Could not remove member." }, 500);
+      return json({ success: true });
+    }
+    return json({ error: "Unknown group action." }, 400);
+  }
+
   if (route === "push-config" && request.method === "POST") {
     const owner = await authUser();
     if (!owner) return json({ error: "Sign in to enable notifications." }, 401);
@@ -364,6 +465,40 @@ Deno.serve(async (request: Request) => {
       for (let i = 0; i < Math.max(a.length, b.length); i++) mismatch |= (a[i] || 0) ^ (b[i] || 0);
       if (mismatch !== 0) return json({ error: "Unauthorized." }, 401);
       const now = new Date();
+
+      const warningLimit = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      const { data: expiring, error: expiringError } = await admin.from("jvault_files").select("id,owner_id,name")
+        .is("expiry_notice_sent_at", null).is("deleted_at", null).gt("expires_at", now.toISOString()).lte("expires_at", warningLimit).limit(100);
+      if (expiringError) throw expiringError;
+      for (const file of expiring || []) {
+        const { data: subs } = await admin.from("jvault_push_subscriptions").select("id,subscription").eq("owner_id", file.owner_id);
+        for (const sub of subs || []) {
+          try {
+            await sendPush(sub.subscription, { title: "JVault file expiring soon", body: file.name + " will be deleted within 24 hours. Download it if you need to keep it.", tag: "jvault-expiry-" + file.id, url: SUPABASE_URL + "/functions/v1/jvault" }, config);
+          } catch (pushError) {
+            if ((pushError as any)?.permanent) await admin.from("jvault_push_subscriptions").delete().eq("id", sub.id);
+            console.error("expiry notification:", pushError);
+          }
+        }
+        await admin.from("jvault_files").update({ expiry_notice_sent_at: now.toISOString() }).eq("id", file.id).is("expiry_notice_sent_at", null);
+      }
+      const { data: expired, error: expiredError } = await admin.from("jvault_files").select("id,storage_path").lte("expires_at", now.toISOString()).limit(100);
+      if (expiredError) throw expiredError;
+      let expiredDeleted = 0;
+      for (const file of expired || []) {
+        const { data: versions, error: versionError } = await admin.from("jvault_file_versions").select("storage_path").eq("file_id", file.id);
+        if (versionError) throw versionError;
+        const paths = [file.storage_path, ...(versions || []).map((v: any) => v.storage_path)].filter(Boolean);
+        const { error: storageError } = await admin.storage.from("jvault-private").remove(paths);
+        if (storageError) { console.error("expired storage deletion:", storageError); continue; }
+        await admin.from("jvault_shares").delete().eq("file_id", file.id);
+        await admin.from("jvault_file_versions").delete().eq("file_id", file.id);
+        await admin.from("jvault_pages").update({ related_file_id: null }).eq("related_file_id", file.id);
+        await admin.from("jvault_reminders").update({ related_file_id: null }).eq("related_file_id", file.id);
+        const { error: deleteError } = await admin.from("jvault_files").delete().eq("id", file.id);
+        if (deleteError) { console.error("expired file row deletion:", deleteError); continue; }
+        expiredDeleted++;
+      }
       const stale = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
       await admin.from("jvault_reminders").update({ notification_claimed_at: null })
         .lt("notification_claimed_at", stale).is("notification_sent_at", null);
@@ -411,7 +546,7 @@ Deno.serve(async (request: Request) => {
           skipped++;
         }
       }
-      return json({ delivered, skipped, checked: due?.length || 0 });
+      return json({ delivered, skipped, checked: due?.length || 0, expiredDeleted });
     } catch (error) {
       console.error("push dispatch:", error);
       return json({ error: "Reminder dispatch failed." }, 500);
@@ -464,8 +599,9 @@ Deno.serve(async (request: Request) => {
     const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
     const { data: share } = await admin.from("jvault_shares").select("id,file_id,expires_at,revoked_at").eq("token_hash", tokenHash).maybeSingle();
     if (!share || share.revoked_at || new Date(share.expires_at).getTime() <= Date.now()) return textResponse("This share link has expired or was revoked.", 410);
-    const { data: file } = await admin.from("jvault_files").select("name,storage_path,deleted_at").eq("id", share.file_id).maybeSingle();
+    const { data: file } = await admin.from("jvault_files").select("name,storage_path,deleted_at,expires_at").eq("id", share.file_id).maybeSingle();
     if (!file || file.deleted_at) return textResponse("This file is no longer available.", 404);
+    if (new Date(file.expires_at).getTime() <= Date.now()) return textResponse("This file has expired.", 410);
     const { data: signed, error } = await admin.storage.from("jvault-private").createSignedUrl(file.storage_path, 60, { download: file.name });
     if (error || !signed?.signedUrl) return textResponse("Could not open the shared file.", 500);
     return new Response(null, {
