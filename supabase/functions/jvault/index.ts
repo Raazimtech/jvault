@@ -377,12 +377,12 @@ Deno.serve(async (request: Request) => {
     const body = parsed.body as { action?: unknown; name?: unknown; groupId?: unknown; username?: unknown; userId?: unknown };
     const action = typeof body.action === "string" ? body.action : "";
     if (action === "create") {
+      const { data: creatorProfile, error: creatorProfileError } = await admin.from("jvault_profiles").select("role").eq("user_id", owner.id).single();
+      if (creatorProfileError || creatorProfile?.role !== "admin") return json({ error: "Only an administrator can create groups." }, 403);
       const name = typeof body.name === "string" ? body.name.trim() : "";
       if (name.length < 2 || name.length > 60) return json({ error: "Group name must be 2–60 characters." }, 400);
       const { data: group, error } = await admin.from("jvault_groups").insert({ name, created_by: owner.id }).select("id,name,created_by,created_at").single();
       if (error || !group) return json({ error: "Could not create group." }, 500);
-      const { error: memberError } = await admin.from("jvault_group_members").insert({ group_id: group.id, user_id: owner.id, member_role: "owner" });
-      if (memberError) { await admin.from("jvault_groups").delete().eq("id", group.id); return json({ error: "Could not initialize group membership." }, 500); }
       return json({ success: true, group }, 201);
     }
     const groupId = typeof body.groupId === "string" ? body.groupId : "";
@@ -394,7 +394,8 @@ Deno.serve(async (request: Request) => {
       if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Enter a valid username." }, 400);
       const { data: target } = await admin.from("jvault_profiles").select("user_id,username").eq("username", username).maybeSingle();
       if (!target) return json({ error: "No JVault user has that username." }, 404);
-      const { error } = await admin.from("jvault_group_members").upsert({ group_id: groupId, user_id: target.user_id, member_role: target.user_id === owner.id ? "owner" : "member" });
+      if (target.user_id === group.created_by) return json({ error: "The group creator manages the group but is not a member." }, 400);
+      const { error } = await admin.from("jvault_group_members").upsert({ group_id: groupId, user_id: target.user_id, member_role: "member" });
       if (error) return json({ error: "Could not add this member." }, 500);
       return json({ success: true });
     }
