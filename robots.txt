@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://raazimtech.github.io/Jvault/sitemap.xml
