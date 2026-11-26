@@ -394,3 +394,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 @keyframes security-reveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){.sql-prank-overlay{padding:12px}.sql-prank-reveal,.sql-prank-scan{padding:18px}.sql-prank-reveal-layout{grid-template-columns:1fr;gap:15px}.sql-prank-character{max-height:235px}.sql-prank-penguin{max-height:205px}.sql-prank-dialogue h2{font-size:23px}}
 @media(prefers-reduced-motion:reduce){.sql-prank-overlay,.sql-prank-overlay *{animation:none!important;transition:none!important}}
+
+
+/* Keep the sign-in panel hidden until credentials are cleared on startup. */
+body:not(.jvault-auth-ready) #auth{visibility:hidden}
