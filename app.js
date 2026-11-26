@@ -90,12 +90,70 @@ const bytes=n=>{n=Number(n)||0;if(!n)return'0 B';let u=['B','KB','MB','GB','TB']
 function toast(m,bad=false){let e=$('toast');e.textContent=m;e.className='toast'+(bad?' bad':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.add('hidden'),3600)}
 function notice(m,ok=false){let e=$('notice');e.textContent=m;e.className='notice show'+(ok?' success':'')}
 function clearNotice(){$('notice').className='notice';$('notice').textContent=''}
+
+let loginLockoutUntil=0,loginLockoutInterval=null;
+function renderLoginLockout(){
+ const left=Math.max(0,Math.ceil((loginLockoutUntil-Date.now())/1000));
+ const overlay=document.getElementById('jvaultLoginLockout');
+ if(!left){clearLoginLockout();return}
+ if(overlay){const timer=overlay.querySelector('[data-lockout-timer]');if(timer)timer.textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0')}
+ $('lu').disabled=true;$('lp').disabled=true;$('lb').disabled=true;
+}
+function clearLoginLockout(){
+ loginLockoutUntil=0;clearInterval(loginLockoutInterval);loginLockoutInterval=null;
+ try{localStorage.removeItem('jvault_login_lockout_until')}catch{}
+ document.getElementById('jvaultLoginLockout')?.remove();
+ $('lu').disabled=false;$('lp').disabled=false;$('lb').disabled=false;
+}
+function startLoginLockout(seconds){
+ const duration=Math.max(1,Math.min(900,Number(seconds)||900));
+ loginLockoutUntil=Date.now()+duration*1000;
+ try{localStorage.setItem('jvault_login_lockout_until',String(loginLockoutUntil))}catch{}
+ let overlay=document.getElementById('jvaultLoginLockout');
+ if(!overlay){
+  overlay=document.createElement('div');overlay.id='jvaultLoginLockout';
+  overlay.setAttribute('role','alertdialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-live','assertive');
+  overlay.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(8,15,27,.94);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(12px)';
+  overlay.innerHTML='<section style="width:min(440px,100%);background:#fff;color:#172033;border-radius:22px;padding:30px 26px;text-align:center;box-shadow:0 24px 80px #0008"><div style="font-size:12px;font-weight:800;letter-spacing:2px;color:#d04444">JVAULT SECURITY LOCKOUT</div><h2 style="font-size:25px;margin:14px 0 8px">Sign-in temporarily locked</h2><p style="color:#5d6879;line-height:1.55;margin:0 0 22px">Too many failed attempts. You cannot sign in, even with the correct password, until this timer reaches zero.</p><div data-lockout-timer style="font-size:48px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:2px">15:00</div><p style="font-size:13px;color:#697386;margin:12px 0 0">This security lock cannot be dismissed.</p></section>';
+  document.body.appendChild(overlay);
+ }
+ clearInterval(loginLockoutInterval);renderLoginLockout();
+ loginLockoutInterval=setInterval(renderLoginLockout,250);
+}
+function resumeLoginLockout(){
+ try{const until=Number(localStorage.getItem('jvault_login_lockout_until'));if(Number.isFinite(until)&&until>Date.now())startLoginLockout(Math.ceil((until-Date.now())/1000));else localStorage.removeItem('jvault_login_lockout_until')}catch{}
+}
+
 function usernameEmail(n){return n.toLowerCase()+'@jvault.invalid'}
 async function getSetupStatus(){let r=await fetch(FUNCTION_URL+'/bootstrap-status',{cache:'no-store'}),j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Setup service unavailable');return j}
 function setAuthMode(setup){clearNotice();$('authhead').innerHTML=setup?'<h2>Create your vault</h2><p>Set up the one and only owner account for JVault.</p>':'<h2>Welcome back.</h2><p>Sign in to open your private workspace.</p>';$('login').classList.toggle('hidden',setup);$('setup').classList.toggle('hidden',!setup)}
-async function init(){ $('year').textContent=new Date().getFullYear();clearLoginCredentials();document.body.classList.add('jvault-auth-ready');try{let{data:{session}}=await db.auth.getSession();if(session){let{data:p}=await db.from('jvault_profiles').select('username,role').eq('user_id',session.user.id).maybeSingle();if(p){user=session.user;profile=p;await showApp();return}await db.auth.signOut()}let s=await getSetupStatus();setAuthMode(!s.claimed)}catch(e){setAuthMode(false);notice('JVault could not reach its setup service. '+e.message)}}
+async function init(){ $('year').textContent=new Date().getFullYear();clearLoginCredentials();resumeLoginLockout();document.body.classList.add('jvault-auth-ready');try{let{data:{session}}=await db.auth.getSession();if(session){let{data:p}=await db.from('jvault_profiles').select('username,role').eq('user_id',session.user.id).maybeSingle();if(p){user=session.user;profile=p;await showApp();return}await db.auth.signOut()}let s=await getSetupStatus();setAuthMode(!s.claimed)}catch(e){setAuthMode(false);notice('JVault could not reach its setup service. '+e.message)}}
 $('setup').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let username=$('su').value.trim().toLowerCase(),password=$('sp').value;if(!/^[a-z0-9_]{3,24}$/.test(username))return notice('Use 3–24 letters, numbers or underscores.');if(password.length<12)return notice('Use at least 12 characters.');if(password!==$('sc').value)return notice('Passwords do not match.');$('sb').disabled=true;try{let r=await fetch(FUNCTION_URL+'/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,bootstrapCode:$('sbc').value.trim()})}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not create account');$('setup').reset();setAuthMode(false);$('lu').value=username;notice('Owner account created. Sign in to continue.',true)}catch(x){notice(x.message)}finally{$('sb').disabled=false}});
-$('login').addEventListener('submit',async e=>{e.preventDefault();clearNotice();let name=$('lu').value.trim().toLowerCase(),password=$('lp').value;if(looksLikeSqlInjection(name)||looksLikeSqlInjection(password)){$('lu').value='';$('lp').value='';showSqlPrank();return}if(!/^[a-z0-9_]{3,24}$/.test(name))return notice('Enter a valid username.');if(!password){notice('Enter your password.');$('lp').focus();return}$('lb').disabled=true;try{let response=await fetch(FUNCTION_URL+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:name,password})}),result=await response.json().catch(()=>({}));if(response.status===429){let seconds=Number(response.headers.get('Retry-After'))||Number(result.retryAfter)||900;throw Error('Too many unsuccessful attempts. Try again in '+Math.ceil(seconds/60)+' minute(s).')}if(!response.ok){failedLoginAttempts++;if(failedLoginAttempts>3)showEmployeePenguin();throw Error(result.error||'Incorrect username or password.')}failedLoginAttempts=0;if(!result.access_token||!result.refresh_token)throw Error('Sign-in response was incomplete.');let{data:sessionData,error:sessionError}=await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});if(sessionError)throw sessionError;let signedUser=sessionData.user;if(locked&&lockedUserId&&signedUser.id!==lockedUserId){await db.auth.signOut({scope:'local'});throw Error('This is not the account that locked this vault.')}let{data:p,error:pe}=await db.from('jvault_profiles').select('username,role').eq('user_id',signedUser.id).maybeSingle();if(pe||!p){await db.auth.signOut({scope:'local'});throw Error('Unable to verify this JVault account.')}user=signedUser;profile=p;locked=false;lockedUserId=null;$('lu').readOnly=false;await showApp()}catch(x){notice(x.message==='Invalid login credentials'?'Incorrect username or password.':x.message)}finally{$('lb').disabled=false}});
+$('login').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(loginLockoutUntil>Date.now()){renderLoginLockout();return}
+ clearNotice();
+ let name=$('lu').value.trim().toLowerCase(),password=$('lp').value;
+ if(looksLikeSqlInjection(name)||looksLikeSqlInjection(password)){$('lu').value='';$('lp').value='';showSqlPrank();return}
+ if(!/^[a-z0-9_]{3,24}$/.test(name))return notice('Enter a valid username.');
+ if(!password){notice('Enter your password.');$('lp').focus();return}
+ $('lb').disabled=true;
+ try{
+  let response=await fetch(FUNCTION_URL+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:name,password})}),result=await response.json().catch(()=>({}));
+  if(response.status===429){startLoginLockout(Number(response.headers.get('Retry-After'))||Number(result.retryAfter)||900);return}
+  if(!response.ok){failedLoginAttempts++;if(failedLoginAttempts>3)showEmployeePenguin();throw Error(result.error||'Incorrect username or password.')}
+  failedLoginAttempts=0;
+  if(!result.access_token||!result.refresh_token)throw Error('Sign-in response was incomplete.');
+  let{data:sessionData,error:sessionError}=await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});
+  if(sessionError)throw sessionError;
+  let signedUser=sessionData.user;
+  if(locked&&lockedUserId&&signedUser.id!==lockedUserId){await db.auth.signOut({scope:'local'});throw Error('This is not the account that locked this vault.')}
+  let{data:p,error:pe}=await db.from('jvault_profiles').select('username,role').eq('user_id',signedUser.id).maybeSingle();
+  if(pe||!p){await db.auth.signOut({scope:'local'});throw Error('Unable to verify this JVault account.')}
+  user=signedUser;profile=p;locked=false;lockedUserId=null;$('lu').readOnly=false;await showApp()
+ }catch(x){notice(x.message==='Invalid login credentials'?'Incorrect username or password.':x.message)}
+ finally{if(!loginLockoutUntil||loginLockoutUntil<=Date.now())$('lb').disabled=false}
+});
 async function showApp(){ $('auth').classList.add('hidden');$('app').classList.remove('hidden');$('uname').innerHTML=esc(profile.username)+'<br><small>'+(profile.role==='admin'?'Administrator':'Member')+'</small>';$('adminNav').classList.toggle('hidden',profile.role!=='admin');$('avatar').textContent=profile.username[0].toUpperCase();$('today').textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric'}).format(new Date()).toUpperCase();await Promise.all([loadFiles(),loadFolders(),loadPages(),loadReminders(),loadActivity(),loadGroups(),profile.role==='admin'?loadAdminUsers():Promise.resolve()]);if(!wired){wire();wired=true}checkDueReminders();if(!window.jvaultReminderTimer)window.jvaultReminderTimer=setInterval(checkDueReminders,60000);registerSW()}
 
 async function apiPost(route,body){let{data:{session}}=await db.auth.getSession();if(!session)throw Error('Sign in again.');let response=await fetch(FUNCTION_URL+'/'+route,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_KEY},body:JSON.stringify(body)});let data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Request failed.');return data}
