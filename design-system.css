@@ -365,3 +365,32 @@ button:disabled{opacity:.5;cursor:not-allowed}
 @keyframes jvault-archive-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.global-busy:before{animation:none;border-color:var(--accent)}}
 @media(max-width:760px){.global-busy{top:max(12px,env(safe-area-inset-top));right:13px}}
+
+/* JVault security character cards — archive visual system */
+.sql-prank-overlay{position:fixed;inset:0;z-index:10020;display:grid;place-items:center;padding:22px;background:#201e1acc;backdrop-filter:blur(3px);opacity:0;transition:opacity .22s ease}
+.sql-prank-overlay.revealed{opacity:1}
+.sql-prank-card{width:min(100%,760px);max-height:min(88vh,760px);overflow:auto;border:1px solid var(--rule-dark);border-top:5px solid var(--accent);border-radius:5px;background:var(--surface);color:var(--ink);box-shadow:0 24px 70px #0005}
+.sql-prank-top{display:flex;align-items:center;gap:9px;padding:15px 19px;border-bottom:1px solid var(--rule);color:var(--muted);font:500 10px var(--mono);letter-spacing:.8px}
+.sql-prank-alert-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.sql-prank-code{margin-left:auto;color:var(--accent)}
+.sql-prank-scan,.sql-prank-reveal{padding:25px}
+.sql-prank-scan-mark{width:34px;height:34px;display:grid;place-items:center;background:var(--accent-wash);color:var(--accent);font:600 20px var(--mono)}
+.sql-prank-scan h2,.sql-prank-dialogue h2{margin:13px 0 8px;font:600 clamp(22px,3vw,32px)/1.1 var(--sans);letter-spacing:-.04em}
+.sql-prank-scan p,.sql-prank-roast{color:var(--muted);font-size:13px;line-height:1.7}
+.sql-prank-scan-line{height:2px;margin-top:20px;background:var(--rule);overflow:hidden}
+.sql-prank-scan-line span{display:block;width:45%;height:100%;background:var(--accent);animation:security-scan 1s ease-in-out infinite alternate}
+.sql-prank-reveal{display:none}
+.sql-prank-overlay.revealed .sql-prank-scan{display:none}
+.sql-prank-overlay.revealed .sql-prank-reveal{display:block;animation:security-reveal .25s ease-out}
+.sql-prank-label,.sql-prank-speaker{color:var(--accent);font:500 9px var(--mono);letter-spacing:1px}
+.sql-prank-reveal-layout{display:grid;grid-template-columns:minmax(180px,.8fr) 1.2fr;align-items:center;gap:25px;margin:18px 0}
+.sql-prank-character{min-width:0;display:grid;place-items:center;padding:14px;border:1px solid var(--rule);background:var(--paper)}
+.sql-prank-penguin{display:block;width:100%;max-width:260px;max-height:310px;object-fit:contain}
+.sql-prank-speech{padding:12px 14px;border-left:3px solid var(--accent);background:var(--paper)}
+.sql-prank-roast{margin:0}
+.sql-prank-close{min-height:42px;padding:0 17px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:white;font-size:12px;font-weight:600}
+.sql-prank-close:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
+@keyframes security-scan{from{transform:translateX(0)}to{transform:translateX(120%)}}
+@keyframes security-reveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:600px){.sql-prank-overlay{padding:12px}.sql-prank-reveal,.sql-prank-scan{padding:18px}.sql-prank-reveal-layout{grid-template-columns:1fr;gap:15px}.sql-prank-character{max-height:235px}.sql-prank-penguin{max-height:205px}.sql-prank-dialogue h2{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.sql-prank-overlay,.sql-prank-overlay *{animation:none!important;transition:none!important}}
