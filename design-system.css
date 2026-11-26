@@ -400,3 +400,75 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 /* Keep the sign-in panel hidden until credentials are cleared on startup. */
 body:not(.jvault-auth-ready) #auth{visibility:hidden}
+
+
+/* JVault group collaboration workspace */
+.group-workspace-page{max-width:1120px;margin:0 auto}
+.group-workspace-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:2px 0 22px}
+.group-workspace-label{color:#8ba0af;font:9px "IBM Plex Mono",monospace;letter-spacing:1.2px}
+.group-page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:0 0 22px;border-bottom:1px solid #e2eaf0}
+.group-page-header h1{margin:5px 0;color:#294b65;font:700 clamp(27px,4vw,36px)/1.15 "Space Grotesk",sans-serif;letter-spacing:-1px;overflow-wrap:anywhere}
+.group-page-header .subtitle{margin:0;color:#7c91a2;font-size:12px}
+.group-page-count{flex:none;padding:8px 11px;border:1px solid #dce7ef;border-radius:9px;color:#67839a;background:#fff;font-size:11px}
+.group-section-nav{display:flex;gap:26px;margin:0 0 22px;border-bottom:1px solid #e2eaf0}
+.group-section-nav button{position:relative;padding:15px 1px 13px;border:0;border-radius:0;background:transparent;color:#8296a6;font-size:12px;font-weight:650;cursor:pointer}
+.group-section-nav button.active{color:#236f9f}
+.group-section-nav button.active:after{position:absolute;right:0;bottom:-1px;left:0;height:2px;background:#287fb5;content:""}
+.group-subpage{display:none}
+.group-subpage.active{display:block}
+.group-chat-shell{display:flex;flex-direction:column;height:min(68vh,690px);min-height:430px;overflow:hidden;border:1px solid #e0e9f0;border-radius:15px;background:#fff}
+.group-chat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 20px;border-bottom:1px solid #eaf0f4}
+.group-chat-header h2,.group-subpage-heading h2{margin:0;color:#31536d;font-size:15px;font-weight:700}
+.group-chat-header p,.group-subpage-heading p{margin:4px 0 0;color:#8a9cab;font-size:11px}
+#groupChatStatus{color:#6f9987;font-size:10px}
+.group-messages{display:flex;flex:1;flex-direction:column;gap:13px;min-height:0;overflow-y:auto;padding:22px;background:#fbfdfe;overscroll-behavior:contain}
+.group-chat-empty,.group-files-empty{display:grid;align-content:center;justify-items:center;flex:1;min-height:220px;text-align:center}
+.group-chat-empty strong,.group-files-empty strong{color:#506d83;font-size:13px}
+.group-chat-empty p,.group-files-empty p{max-width:330px;margin:6px 0 0;color:#8b9dab;font-size:11px;line-height:1.6}
+.group-message-row{display:flex;justify-content:flex-start;width:100%}
+.group-message-row.own{justify-content:flex-end}
+.group-message-content{max-width:min(76%,560px);min-width:90px}
+.group-message-meta{display:flex;align-items:center;gap:9px;margin:0 4px 5px;color:#8296a6;font-size:10px}
+.group-message-meta strong{color:#55738a;font-weight:700}
+.group-message-meta time{font-size:9px}
+.group-message-row.own .group-message-meta{justify-content:flex-end}
+.group-message-bubble{padding:10px 13px;border:1px solid #e0e9f0;border-radius:12px 12px 12px 3px;background:#fff;color:#36566e;font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.group-message-row.own .group-message-bubble{border-color:#d7e8f3;border-radius:12px 12px 3px 12px;background:#edf6fb;color:#2f5875}
+.group-message-delete{display:block;margin:4px 3px 0 auto;padding:2px 4px;border:0;background:transparent;color:#a0acb5;font-size:9px;cursor:pointer}
+.group-message-composer{display:flex;align-items:flex-end;gap:10px;padding:13px 15px;border-top:1px solid #e8eef3;background:#fff}
+.group-message-composer textarea{flex:1;min-width:0;min-height:42px;max-height:120px;padding:11px 12px;resize:vertical;border:1px solid #dce7ef;border-radius:10px;background:#fbfdfe;color:#294b65;font:12px/1.5 "Space Grotesk",sans-serif}
+.group-message-composer .primary-btn{min-width:78px;justify-content:center}
+.group-subpage-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:2px 0 18px}
+.group-files-list,.group-members-list{display:grid;gap:0;border-top:1px solid #e4ebf1}
+.group-file-row,.group-member-row{display:flex;align-items:center;gap:13px;min-width:0;padding:14px 4px;border-bottom:1px solid #e8eef3}
+.group-file-type,.group-member-avatar{display:grid;place-items:center;flex:0 0 auto;width:38px;height:38px;border:1px solid #dce7ef;border-radius:10px;background:#f4f8fb;color:#54758d;font:9px "IBM Plex Mono",monospace}
+.group-file-info,.group-member-copy{display:grid;flex:1;min-width:0;gap:4px}
+.group-file-info strong,.group-member-copy strong{overflow:hidden;color:#36566e;font-size:12px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.group-file-info small,.group-member-copy small{color:#8a9cab;font-size:10px}
+.group-file-actions{display:flex;align-items:center;gap:7px;flex:none}
+.group-file-actions button,.group-member-remove{padding:7px 10px;border:1px solid #dce7ef;border-radius:8px;background:#fff;color:#52738a;font-size:10px;font-weight:650;cursor:pointer}
+.group-file-actions button.danger,.group-member-remove{border-color:#f0dddd;color:#a35e5e}
+.group-member-manage{margin:0 0 18px;padding:16px;border:1px solid #e0e9f0;border-radius:12px;background:#fbfdfe}
+.group-member-manage label{display:block;margin-bottom:8px;color:#59758b;font-size:11px;font-weight:700}
+.group-member-add-controls{display:flex;gap:8px;max-width:520px}
+.group-member-add-controls input{flex:1;min-width:0;padding:9px 11px}
+.group-role-pill{flex:none;padding:6px 8px;border:1px solid #e2eaf0;border-radius:7px;background:#f7fafc;color:#7a91a3;font-size:9px;font-weight:700}
+@media(max-width:650px){
+ .group-page-header{align-items:flex-start;flex-direction:column;gap:12px}
+ .group-workspace-toolbar{margin-bottom:17px}
+ .group-section-nav{gap:21px;overflow-x:auto}
+ .group-section-nav button{flex:none}
+ .group-chat-shell{height:68vh;min-height:390px}
+ .group-messages{padding:15px 12px}
+ .group-message-content{max-width:88%}
+ .group-chat-header{padding:14px}
+ .group-message-composer{gap:7px;padding:10px}
+ .group-message-composer .primary-btn{min-width:64px;padding:0 12px}
+ .group-subpage-heading{align-items:flex-start;flex-direction:column}
+ .group-subpage-heading .primary-btn{width:100%}
+ .group-file-row,.group-member-row{gap:9px}
+ .group-file-actions{gap:4px}
+ .group-file-actions button{padding:7px 8px}
+ .group-member-add-controls{flex-direction:column}
+ .group-member-add-controls button{width:100%}
+}
