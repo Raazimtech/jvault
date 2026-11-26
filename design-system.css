@@ -215,8 +215,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .group-avatar,.group-workspace-avatar{width:25px;height:25px;display:grid;place-items:center;border:1px solid var(--rule-dark);border-radius:50%;background:var(--paper-2);color:var(--ink);font:10px var(--mono)}
 .group-avatar-more,.group-workspace-avatar-more{background:var(--ink);color:#fff;border-color:var(--ink)}
 .group-no-members{color:var(--muted);font-size:10px}
-.group-open-button{width:100%;display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding:11px 0;border:0;border-top:1px solid var(--ink);border-radius:0;background:transparent;color:var(--ink);font-size:11px;font-weight:600;text-align:left}
-.group-open-button:hover{color:var(--accent)}
+.group-open-button{width:100%;min-height:42px;display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding:0 14px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:#fff;font-size:11px;font-weight:600;text-align:left;transition:background .15s,border-color .15s,transform .15s}
+.group-open-button:hover{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;transform:translateY(-1px)}
+.group-open-button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .group-manage-area{margin-top:13px;padding-top:13px;border-top:1px solid var(--rule)}
 .group-add-member-form label{display:block;margin-bottom:7px;color:var(--muted);font:9px var(--mono);text-transform:uppercase}
 .group-add-member-controls{display:flex;gap:5px}
