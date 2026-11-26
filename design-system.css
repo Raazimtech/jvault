@@ -346,3 +346,21 @@ button:disabled{opacity:.5;cursor:not-allowed}
  .app-footer{flex-direction:column}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Minimal global activity indicator: spinner only, no status pill or copy. */
+.global-busy{
+ position:fixed;z-index:10000;top:16px;right:18px;width:28px;height:28px;
+ display:grid;place-items:center;border:1px solid var(--rule-dark);border-radius:50%;
+ background:var(--surface);opacity:0;visibility:hidden;pointer-events:none;
+ transition:opacity .14s ease,visibility .14s ease;box-shadow:0 2px 8px #201e1a12;
+}
+.global-busy:before{
+ content:"";width:14px;height:14px;border:2px solid var(--rule);
+ border-top-color:var(--accent);border-right-color:var(--accent);
+ border-radius:50%;animation:jvault-archive-spin .7s linear infinite;
+}
+.global-busy.active{opacity:1;visibility:visible}
+@keyframes jvault-archive-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.global-busy:before{animation:none;border-color:var(--accent)}}
+@media(max-width:760px){.global-busy{top:max(12px,env(safe-area-inset-top));right:13px}}
