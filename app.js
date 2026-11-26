@@ -217,8 +217,12 @@ function renderGroupWorkspace(){
  const g=currentGroup();
  if(!g){activeGroupId=null;switchPage('groups');return}
  $('groupWorkspaceName').textContent=g.name;
- $('groupWorkspaceDescription').textContent='A private space for this group to communicate and share work.';
- $('groupMemberCount').textContent=(g.members||[]).length+' '+((g.members||[]).length===1?'member':'members');
+ $('crumbCurrent').textContent=g.name;
+ const people=[...(g.created_by===user.id?[{username:profile?.username||'You'}]:[{username:'Admin'}]),...(g.members||[])];
+ $('groupTopMembers').innerHTML=people.slice(0,6).map(m=>'<span class="group-top-avatar" title="'+esc(m.username||'Member')+'">'+esc((m.username||'U').slice(0,1).toUpperCase())+'</span>').join('')+(people.length>6?'<span class="group-top-avatar group-top-avatar-more">+'+(people.length-6)+'</span>':'');
+ $('groupTopMembers').setAttribute('aria-label',people.length+' group members');
+ $('groupTopMembers').classList.remove('hidden');
+ $('avatar').classList.add('hidden');$('uname').classList.add('hidden');$('today').classList.add('hidden');
  $('groupMemberForm').dataset.addMember=g.id;
  $('groupMemberManage').classList.toggle('hidden',g.created_by!==user.id);
  setGroupSection(groupSubPage);
@@ -363,7 +367,7 @@ function renderGroupMembers(){
 }
 function switchPage(target){
  if(target!=='groupWorkspace'&&groupChannel){db.removeChannel(groupChannel);groupChannel=null}
- if(target!=='groupWorkspace')activeGroupId=null;
+ if(target!=='groupWorkspace'){activeGroupId=null;$('groupTopMembers').classList.add('hidden');$('avatar').classList.remove('hidden');$('uname').classList.remove('hidden');$('today').classList.remove('hidden')}
  page=target;closeMobileSidebar();
  document.querySelectorAll('.page-view').forEach(x=>x.classList.remove('active'));
  const id=target==='files'?'filesPage':target==='groupWorkspace'?'groupWorkspacePage':target==='home'?'homePage':target+'Page';
