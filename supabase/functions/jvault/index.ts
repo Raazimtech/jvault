@@ -520,6 +520,8 @@ Deno.serve(async (request: Request) => {
         if (deleteError) { console.error("expired file row deletion:", deleteError); continue; }
         expiredDeleted++;
       }
+      let delivered = 0, skipped = 0, checked = 0;
+      if (config) {
       const stale = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
       await admin.from("jvault_reminders").update({ notification_claimed_at: null })
         .lt("notification_claimed_at", stale).is("notification_sent_at", null);
@@ -528,7 +530,7 @@ Deno.serve(async (request: Request) => {
         .eq("is_done", false).is("notification_sent_at", null)
         .lte("due_at", now.toISOString()).order("due_at").limit(100);
       if (error) throw error;
-      let delivered = 0, skipped = 0;
+      checked = due?.length || 0;
       for (const reminder of due || []) {
         const { data: claim } = await admin.from("jvault_reminders")
           .update({ notification_claimed_at: now.toISOString() })
@@ -567,7 +569,8 @@ Deno.serve(async (request: Request) => {
           skipped++;
         }
       }
-      return json({ delivered, skipped, checked: due?.length || 0, expiredDeleted });
+      }
+      return json({ delivered, skipped, checked, expiredDeleted });
     } catch (error) {
       console.error("push dispatch:", error);
       return json({ error: "Reminder dispatch failed." }, 500);
