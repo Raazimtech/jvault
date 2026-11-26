@@ -2,8 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#eaf4fb"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="JVault"><meta name="description" content="JVault — a private space for files, notes and knowledge.">
-<title>JVault — Private workspace</title>
+<meta name="theme-color" content="#eaf4fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="JVault">
+<meta name="description" content="JVault is a private student workspace for secure file storage, organized notes and group collaboration. Sign in with your student account.">
+<meta name="keywords" content="JVault, J Vault, JVault student workspace, student file storage, private file vault, student notes, group study workspace, secure file sharing">
+<meta name="author" content="Raazim Tech">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<link rel="canonical" href="https://raazimtech.github.io/Jvault/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="JVault">
+<meta property="og:title" content="JVault | Private Student Workspace">
+<meta property="og:description" content="A private workspace for students to store files, organize notes and collaborate through approved group spaces.">
+<meta property="og:url" content="https://raazimtech.github.io/Jvault/">
+<meta property="og:image" content="https://raazimtech.github.io/Jvault/icon.svg">
+<meta property="og:image:alt" content="JVault shield logo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="JVault | Private Student Workspace">
+<meta name="twitter:description" content="Secure student file storage, organized notes and group collaboration in one private workspace.">
+<meta name="twitter:image" content="https://raazimtech.github.io/Jvault/icon.svg">
+<title>JVault | Private Student Workspace, Files & Notes</title>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "JVault",
+  "alternateName": "J Vault",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "Web",
+  "description": "JVault is a private student workspace for secure file storage, organized notes, reminders and group collaboration.",
+  "url": "https://raazimtech.github.io/Jvault/",
+  "image": "https://raazimtech.github.io/Jvault/icon.svg",
+  "creator": {
+    "@type": "Organization",
+    "name": "Raazim Tech"
+  },
+  "featureList": [
+    "Private student file storage",
+    "Organized files and folders",
+    "Personal notes and reminders",
+    "Group workspaces and controlled file sharing",
+    "Browser-based access"
+  ]
+}
+</script>
 <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +61,7 @@
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 <main id="auth" class="auth-shell">
  <section class="auth-visual"><a class="brand" href="#"><span class="brand-mark">J</span><span>jvault</span></a><div class="auth-copy"><span class="eyebrow">YOUR PRIVATE DIGITAL SPACE</span><h1>Everything<br>worth keeping.<br><em>In one place.</em></h1><p>Files, notes and ideas, organized around the way you work.</p></div><div class="auth-footnote">PRIVATE STORAGE <span></span> PERSONAL KNOWLEDGE</div></section>
- <section class="auth-panel"><div class="mobile-brand brand"><span class="brand-mark">J</span><span>jvault</span></div><div class="auth-card"><div class="auth-overline">YOUR SPACE IS WAITING</div><div id="authhead"><h2>Welcome back.</h2><p>Sign in to open your private workspace.</p></div>
+ <section class="auth-panel"><div class="mobile-brand brand"><span class="brand-mark">J</span><span>jvault</span></div><div class="auth-card"><div class="auth-overline">YOUR SPACE IS WAITING</div><div id="authhead"><h2>Welcome back.</h2><p>JVault is a private student workspace for storing files, organizing notes and sharing resources in approved groups. Sign in with your student account. Access is provided by your JVault administrator.</p></div>
  <form id="setup" class="hidden" autocomplete="off"><label for="su">Username</label><input id="su" minlength="3" maxlength="24" pattern="[a-zA-Z0-9_]{3,24}" placeholder="Choose a username" required><label for="sp">Password</label><input id="sp" type="password" minlength="12" autocomplete="new-password" placeholder="At least 12 characters" required><label for="sc">Confirm password</label><input id="sc" type="password" minlength="12" autocomplete="new-password" placeholder="Enter password again" required><label for="sbc">One-time setup code</label><input id="sbc" type="password" autocomplete="off" placeholder="Creator code" required><button id="sb" class="primary-btn" type="submit">Create my vault <span>→</span></button><p class="form-note">Creates the single owner account for this vault.</p></form>
  <div class="login-prank-row"><form id="login" method="post" action="./" autocomplete="on" novalidate><label for="lu">Username</label><input id="lu" autocomplete="username" placeholder="Your username" required><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" placeholder="Your password" required><button id="lb" class="primary-btn" type="submit">Unlock workspace <span>→</span></button><p class="form-note">Your files are available only after you sign in.</p></form><aside id="policePenguinCallout" class="police-penguin-callout" aria-live="polite"><img src="./tired%20penguin%20police.png" alt="Tired police penguin"><div><p class="police-penguin-kicker">JVAULT SECURITY</p><p class="police-penguin-message">Bro, I just got off duty.</p></div></aside></div>
  <div class="auth-assurance"><span class="assurance-check">✓</span> Private account <i></i> Secure connection</div></div><footer class="auth-footer">JVAULT © <span id="year"></span><span>YOUR FILES. YOUR CONTROL.</span></footer></section>
