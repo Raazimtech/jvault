@@ -238,9 +238,9 @@ function setGroupSection(name){
 async function loadGroupMessages(){
  const g=currentGroup();if(!g)return;
  $('groupChatStatus').textContent='Loading…';
- const {data,error}=await db.from('jvault_group_messages').select('*').eq('group_id',g.id).order('created_at',{ascending:true}).limit(150);
+ const {data,error}=await db.from('jvault_group_messages').select('*').eq('group_id',g.id).order('created_at',{ascending:false}).limit(150);
  if(error){$('groupChatStatus').textContent='Unavailable';toast('Could not load group messages: '+error.message,true);return}
- groupMessages=data||[];renderGroupMessages();
+ groupMessages=(data||[]).reverse();renderGroupMessages();
 }
 function subscribeGroupMessages(){
  const g=currentGroup();if(!g||groupChannel)return;
