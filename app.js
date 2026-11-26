@@ -335,7 +335,7 @@ async function uploadGroupFiles(fileList,announceInChat=false){
    uploaded++;
   }catch(x){toast('Could not upload '+file.name+': '+x.message,true)}
  }
- $('groupFilePicker').value='';await loadGroupFiles();
+ $('groupFilePicker').value='';$('groupChatFilePicker').value='';await loadGroupFiles();
  if(uploaded)toast(uploaded+' file(s) shared with the group.');
 }
 async function downloadGroupFile(id){
