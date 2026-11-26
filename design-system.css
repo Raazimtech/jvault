@@ -369,7 +369,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* JVault security character cards — archive visual system */
 .sql-prank-overlay{position:fixed;inset:0;z-index:10020;display:grid;place-items:center;padding:22px;background:#201e1acc;backdrop-filter:blur(3px);opacity:0;transition:opacity .22s ease}
 .sql-prank-overlay.revealed{opacity:1}
-.sql-prank-card{width:min(100%,760px);max-height:min(88vh,760px);overflow:auto;border:1px solid var(--rule-dark);border-top:5px solid var(--accent);border-radius:5px;background:var(--surface);color:var(--ink);box-shadow:0 24px 70px #0005}
+.sql-prank-card{width:min(100%,880px);max-height:min(88vh,800px);overflow:auto;border:1px solid var(--rule-dark);border-top:5px solid var(--accent);border-radius:5px;background:var(--surface);color:var(--ink);box-shadow:0 24px 70px #0005}
 .sql-prank-top{display:flex;align-items:center;gap:9px;padding:15px 19px;border-bottom:1px solid var(--rule);color:var(--muted);font:500 10px var(--mono);letter-spacing:.8px}
 .sql-prank-alert-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
 .sql-prank-code{margin-left:auto;color:var(--accent)}
@@ -383,16 +383,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .sql-prank-overlay.revealed .sql-prank-scan{display:none}
 .sql-prank-overlay.revealed .sql-prank-reveal{display:block;animation:security-reveal .25s ease-out}
 .sql-prank-label,.sql-prank-speaker{color:var(--accent);font:500 9px var(--mono);letter-spacing:1px}
-.sql-prank-reveal-layout{display:grid;grid-template-columns:minmax(180px,.8fr) 1.2fr;align-items:center;gap:25px;margin:18px 0}
-.sql-prank-character{min-width:0;display:grid;place-items:center;padding:14px;border:1px solid var(--rule);background:var(--paper)}
-.sql-prank-penguin{display:block;width:100%;max-width:260px;max-height:310px;object-fit:contain}
-.sql-prank-speech{padding:12px 14px;border-left:3px solid var(--accent);background:var(--paper)}
+.sql-prank-reveal-layout{display:grid;grid-template-columns:minmax(250px,.95fr) 1.05fr;align-items:center;gap:28px;margin:20px 0}
+.sql-prank-character{min-width:0;display:grid;place-items:center;padding:4px;border:0;background:transparent}
+.sql-prank-penguin{display:block;width:100%;max-width:360px;max-height:420px;object-fit:contain;transform:scale(1.06);transform-origin:center}
+.sql-prank-dialogue{min-width:0}
+.sql-prank-speech{position:relative;padding:16px 18px;border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:5px;background:var(--paper)}
+.sql-prank-speech:before{content:"";position:absolute;left:-9px;top:28px;width:15px;height:15px;background:var(--paper);border-left:1px solid var(--rule);border-bottom:1px solid var(--rule);transform:rotate(45deg)}
 .sql-prank-roast{margin:0}
 .sql-prank-close{min-height:42px;padding:0 17px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:white;font-size:12px;font-weight:600}
 .sql-prank-close:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
 @keyframes security-scan{from{transform:translateX(0)}to{transform:translateX(120%)}}
 @keyframes security-reveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:600px){.sql-prank-overlay{padding:12px}.sql-prank-reveal,.sql-prank-scan{padding:18px}.sql-prank-reveal-layout{grid-template-columns:1fr;gap:15px}.sql-prank-character{max-height:235px}.sql-prank-penguin{max-height:205px}.sql-prank-dialogue h2{font-size:23px}}
+@media(max-width:600px){.sql-prank-overlay{padding:10px}.sql-prank-card{max-height:92vh}.sql-prank-reveal,.sql-prank-scan{padding:16px}.sql-prank-reveal-layout{grid-template-columns:minmax(112px,.78fr) minmax(0,1.22fr);gap:12px;margin:16px 0}.sql-prank-character{padding:0}.sql-prank-penguin{max-height:280px;transform:scale(1.12)}.sql-prank-dialogue h2{font-size:clamp(17px,5vw,23px);line-height:1.12}.sql-prank-speech{padding:11px 12px}.sql-prank-speech:before{left:-7px;top:20px;width:12px;height:12px}.sql-prank-roast{font-size:11px;line-height:1.55}.sql-prank-speaker,.sql-prank-label{font-size:8px;letter-spacing:.6px}}
 @media(prefers-reduced-motion:reduce){.sql-prank-overlay,.sql-prank-overlay *{animation:none!important;transition:none!important}}
 
 
