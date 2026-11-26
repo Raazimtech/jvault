@@ -477,3 +477,38 @@ body:not(.jvault-auth-ready) #auth{visibility:hidden}
 .group-attach-button:hover{border-color:#b9d2e2;background:#f4f9fc;color:#286f9b}
 .group-attach-button svg{width:18px;height:18px}
 @media(max-width:650px){.group-attach-button{flex-basis:38px;width:38px;height:40px}}
+
+
+/* Full-page group messaging workspace */
+.top-actions .group-top-members{display:flex;align-items:center;padding-left:4px}
+.group-top-avatar{display:grid;place-items:center;width:29px;height:29px;margin-left:-5px;border:2px solid var(--paper);border-radius:50%;background:#eaf3f9;color:#315d79;font:600 10px "Space Grotesk",sans-serif}
+.group-top-avatar:first-child{margin-left:0}
+.group-top-avatar-more{background:#315d79;color:#fff}
+.group-workspace-page{width:100%;max-width:none;height:calc(100dvh - 67px);min-height:440px;margin:0;padding:0}
+.content:has(#groupWorkspacePage.active){max-width:none;height:calc(100dvh - 67px);padding:0;overflow:hidden}
+.workspace:has(#groupWorkspacePage.active){height:100dvh;min-height:0;overflow:hidden}
+.content:has(#groupWorkspacePage.active)>.app-footer{display:none}
+.group-workspace-layout{display:grid;grid-template-columns:190px minmax(0,1fr);width:100%;height:100%;min-height:0}
+.group-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:0;padding:22px 12px;border:0;border-right:1px solid #e2eaf0;background:#f8fbfd;overflow-y:auto}
+.group-nav-label{padding:0 10px 12px;color:#91a3b1;font:9px "IBM Plex Mono",monospace;letter-spacing:1px}
+.group-section-nav button{display:flex;align-items:center;gap:11px;width:100%;padding:12px 10px;border:0;border-radius:8px;background:transparent;color:#71899b;font-size:12px;font-weight:600;text-align:left}
+.group-section-nav button>span{width:17px;color:#8299aa;font-size:15px;text-align:center}
+.group-section-nav button.active{background:#eaf3f9;color:#236f9f}
+.group-section-nav button.active:after{display:none}
+.group-section-nav .group-back-button{margin-top:12px;border-top:1px solid #e2eaf0;border-radius:0;padding-top:17px;color:#71899b;font-size:11px}
+.group-nav-spacer{flex:1;min-height:20px}
+.group-workspace-main{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;padding:0}
+.group-subpage{display:none;flex:1;min-height:0;overflow:auto}
+.group-subpage.active{display:flex;flex-direction:column}
+#groupChatView{overflow:hidden}
+.group-chat-shell{display:flex;flex:1;flex-direction:column;width:100%;height:100%;min-height:0;max-height:none;overflow:hidden;border:0;border-radius:0;background:#fff}
+.group-chat-header{flex:0 0 auto;padding:10px 20px;background:#fff}
+.group-chat-header>div{display:none}
+.group-chat-header #groupChatStatus{margin-left:auto}
+.group-messages{flex:1;min-height:0;padding:24px clamp(18px,4vw,64px);background:#fff}
+.group-message-content{max-width:min(72%,680px)}
+.group-message-composer{flex:0 0 auto;padding:14px clamp(14px,3vw,42px) max(14px,env(safe-area-inset-bottom));background:#fff}
+.group-message-composer textarea{max-height:150px;resize:none}
+#groupFilesView,#groupMembersView{padding:28px clamp(18px,4vw,56px);overflow:auto}
+.group-subpage-heading{margin:0 0 20px}
+@media(max-width:760px){.group-workspace-page{height:calc(100dvh - 60px);min-height:360px}.content:has(#groupWorkspacePage.active){height:calc(100dvh - 60px)}.group-workspace-layout{grid-template-columns:64px minmax(0,1fr)}.group-section-nav{gap:6px;padding:14px 6px}.group-nav-label{padding:0 0 10px;text-align:center;font-size:7px;letter-spacing:.4px}.group-section-nav button{justify-content:center;gap:0;padding:13px 4px;font-size:0}.group-section-nav button>span{font-size:17px}.group-section-nav .group-back-button{font-size:0}.group-messages{padding:16px 12px}.group-message-content{max-width:88%}.group-chat-header{padding:6px 12px}.group-message-composer{gap:7px;padding:9px 9px max(10px,env(safe-area-inset-bottom))}#groupFilesView,#groupMembersView{padding:18px 12px}.top-actions{gap:7px}.group-top-avatar{width:25px;height:25px;font-size:9px}}
