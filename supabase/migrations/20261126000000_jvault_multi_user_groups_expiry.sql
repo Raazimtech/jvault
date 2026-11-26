@@ -31,3 +31,25 @@ create policy "JVault users read own or group objects" on storage.objects for se
 
 -- Preserve existing vault contents for one final seven-day download window.
 update public.jvault_files set expires_at=now()+interval '7 days', expiry_notice_sent_at=null where expires_at <= now();
+
+-- Independent secret for scheduled maintenance; it is separate from push-notification setup.
+create table if not exists public.jvault_system_config (
+  id smallint primary key default 1 check (id = 1),
+  dispatch_secret text not null default encode(gen_random_bytes(32),'hex'),
+  created_at timestamptz not null default now()
+);
+alter table public.jvault_system_config enable row level security;
+insert into public.jvault_system_config(id) values (1) on conflict (id) do nothing;
+select cron.unschedule(jobid) from cron.job where command like '%jvault/push-dispatch%';
+select cron.schedule('jvault-maintenance','* * * * *',$job$
+  select net.http_post(
+    url := 'https://dpiwdhtbhwjgatvcfkcb.supabase.co/functions/v1/jvault/push-dispatch',
+    headers := jsonb_build_object(
+      'Content-Type','application/json',
+      'apikey','sb_publishable_PSZnTEo74jObih_6TTpXVQ_tJwzTnXY',
+      'x-jvault-dispatch',(select dispatch_secret from public.jvault_system_config where id=1)
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 10000
+  ) where exists(select 1 from public.jvault_system_config where id=1);
+$job$);
