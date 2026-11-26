@@ -180,3 +180,54 @@
 .groups-empty-state h2{margin:15px 0 5px;color:#31536d;font-size:17px}
 .groups-empty-state p{max-width:390px;margin:0;color:#8398a9;font-size:12px;line-height:1.65}
 @media(max-width:700px){.groups-page-banner{align-items:flex-start;padding:20px;gap:14px}.groups-banner-mark{width:46px;height:46px;border-radius:12px}.groups-page-banner h1{font-size:25px}.groups-section-heading{align-items:flex-start}.group-create-panel{align-items:stretch;flex-direction:column}.group-create-form{min-width:0;flex-direction:column}.group-create-form .primary-btn{width:100%}.group-workspace-card{padding:17px}}
+
+
+/* Dedicated group workspace: visually distinct from the personal file library. */
+.filesPage.group-mode .welcome-row,
+#filesPage.group-mode .welcome-row,
+#filesPage.group-mode .stats-grid,
+#filesPage.group-mode .upload-sharing-row,
+#filesPage.group-mode .dropzone{display:none!important}
+#filesPage.group-mode .library-section{margin-top:24px;padding:22px;border:1px solid #dce8f0;border-radius:19px;background:#fff;box-shadow:0 10px 30px rgba(43,78,103,.045)}
+.group-workspace-head{margin:0 0 24px;padding:24px 27px;border:1px solid #d8e6f0;border-radius:20px;background:#f2f7fb}
+.group-workspace-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:23px}
+.group-back-button{padding:8px 11px;border:1px solid #d8e5ee;border-radius:9px;background:#fff;color:#5c7a91;font-size:11px;font-weight:750;cursor:pointer}
+.group-private-note{display:flex;align-items:center;gap:7px;color:#7892a6;font-size:9px;font-weight:800;letter-spacing:1.2px}
+.group-private-note span{width:7px;height:7px;border-radius:50%;background:#5b9b82;box-shadow:0 0 0 4px #e0efe8}
+.group-workspace-hero{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.group-workspace-identity{display:flex;align-items:center;gap:17px;min-width:0}
+.group-workspace-large-icon{display:grid;place-items:center;flex:0 0 auto;width:58px;height:58px;border:1px solid #cbdfea;border-radius:16px;background:#e2eef6;color:#416d8c}
+.group-workspace-large-icon svg{width:29px;height:29px}
+.group-workspace-kicker{color:#7893a7;font-size:9px;font-weight:800;letter-spacing:1.5px}
+.group-workspace-identity h1{margin:5px 0;color:#294c66;font:800 clamp(23px,3vw,31px)/1.15 Manrope,sans-serif;letter-spacing:-.8px;overflow-wrap:anywhere}
+.group-workspace-identity p{margin:0;color:#7890a3;font-size:12px}
+.group-upload-button{flex:0 0 auto;white-space:nowrap}
+.group-workspace-meta{display:flex;align-items:center;gap:28px;margin-top:24px;padding-top:18px;border-top:1px solid #dce8f0}
+.group-workspace-meta-item{display:flex;align-items:center;gap:10px}
+.group-meta-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#e5eff6;color:#527792;font-size:17px}
+.group-workspace-meta-item strong,.group-workspace-meta-item small{display:block}
+.group-workspace-meta-item strong{color:#31536d;font-size:15px}
+.group-workspace-meta-item small{margin-top:2px;color:#8298a8;font-size:9px}
+.group-workspace-people{display:grid;gap:6px;margin-left:auto}
+.group-people-label{color:#8ba0af;font-size:8px;font-weight:800;letter-spacing:1.1px}
+.group-workspace-avatars{display:flex;align-items:center;padding-left:2px}
+.group-workspace-avatar{display:grid;place-items:center;width:27px;height:27px;margin-left:-3px;border:2px solid #f2f7fb;border-radius:50%;background:#dceaf3;color:#456b85;font-size:10px;font-weight:800}
+.group-workspace-avatar-more{background:#fff;color:#6e8799}
+#filesPage.group-mode .library-section .section-heading{margin-bottom:17px}
+#filesPage.group-mode .library-section .section-heading .eyebrow{color:#8199aa}
+#filesPage.group-mode .library-section .section-heading h2{color:#2d506a;font-size:20px}
+#filesPage.group-mode .library-toolbar{padding:11px;border:1px solid #e6edf2;border-radius:12px;background:#f8fbfd}
+#filesPage.group-mode .file-list{margin-top:14px}
+@media(max-width:650px){
+ .group-workspace-head{padding:18px;margin-bottom:18px}
+ .group-workspace-topline{margin-bottom:18px}
+ .group-workspace-hero{align-items:flex-start;flex-direction:column}
+ .group-workspace-identity{gap:12px}
+ .group-workspace-large-icon{width:47px;height:47px;border-radius:13px}
+ .group-workspace-large-icon svg{width:24px;height:24px}
+ .group-upload-button{width:100%}
+ .group-workspace-meta{gap:17px;flex-wrap:wrap}
+ .group-workspace-people{width:100%;margin:2px 0 0}
+ #filesPage.group-mode .library-section{padding:14px;border-radius:15px}
+ #filesPage.group-mode .section-heading{flex-direction:column;gap:12px}
+}
