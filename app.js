@@ -12,7 +12,7 @@ const AUTH_STORAGE_KEY='sb-dpiwdhtbhwjgatvcfkcb-auth-token';
 try{localStorage.removeItem(AUTH_STORAGE_KEY)}catch(e){}
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storage:window.sessionStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
-let user=null,profile=null,groups=[],adminUsers=[],files=[],folders=[],pages=[],reminders=[],activity=[],view='all',page='files',currentFolder=null,activeGroupId=null,selected=new Set(),activeNote=null,noteTimer=null,toastTimer=null,loading=false,locked=false,lockedUserId=null,wired=false;const notifiedReminders=new Set(),expiryNoticeShown=new Set();
+let user=null,profile=null,groups=[],adminUsers=[],files=[],folders=[],pages=[],reminders=[],activity=[],view='all',page='home',currentFolder=null,activeGroupId=null,selected=new Set(),activeNote=null,noteTimer=null,toastTimer=null,loading=false,locked=false,lockedUserId=null,wired=false;const notifiedReminders=new Set(),expiryNoticeShown=new Set();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function looksLikeSqlInjection(value){
  const input=String(value||'');
