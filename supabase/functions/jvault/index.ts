@@ -465,7 +465,9 @@ Deno.serve(async (request: Request) => {
       let mismatch = a.length ^ b.length;
       for (let i = 0; i < Math.max(a.length, b.length); i++) mismatch |= (a[i] || 0) ^ (b[i] || 0);
       if (mismatch !== 0) return json({ error: "Unauthorized." }, 401);
-      const config = await getPushConfig();
+      let config: any = null;
+      try { config = await getPushConfig(); }
+      catch (pushConfigError) { console.error("push configuration unavailable; continuing cleanup:", pushConfigError); }
       const now = new Date();
 
       const warningLimit = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
@@ -473,13 +475,15 @@ Deno.serve(async (request: Request) => {
         .is("expiry_notice_sent_at", null).is("deleted_at", null).gt("expires_at", now.toISOString()).lte("expires_at", warningLimit).limit(100);
       if (expiringError) throw expiringError;
       for (const file of expiring || []) {
-        const { data: subs } = await admin.from("jvault_push_subscriptions").select("id,subscription").eq("owner_id", file.owner_id);
-        for (const sub of subs || []) {
-          try {
-            await sendPush(sub.subscription, { title: "JVault file expiring soon", body: file.name + " will be deleted within 24 hours. Download it if you need to keep it.", tag: "jvault-expiry-" + file.id, url: SUPABASE_URL + "/functions/v1/jvault" }, config);
-          } catch (pushError) {
-            if ((pushError as any)?.permanent) await admin.from("jvault_push_subscriptions").delete().eq("id", sub.id);
-            console.error("expiry notification:", pushError);
+        if (config) {
+          const { data: subs } = await admin.from("jvault_push_subscriptions").select("id,subscription").eq("owner_id", file.owner_id);
+          for (const sub of subs || []) {
+            try {
+              await sendPush(sub.subscription, { title: "JVault file expiring soon", body: file.name + " will be deleted within 24 hours. Download it if you need to keep it.", tag: "jvault-expiry-" + file.id, url: SUPABASE_URL + "/functions/v1/jvault" }, config);
+            } catch (pushError) {
+              if ((pushError as any)?.permanent) await admin.from("jvault_push_subscriptions").delete().eq("id", sub.id);
+              console.error("expiry notification:", pushError);
+            }
           }
         }
         await admin.from("jvault_files").update({ expiry_notice_sent_at: now.toISOString() }).eq("id", file.id).is("expiry_notice_sent_at", null);
