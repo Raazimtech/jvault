@@ -512,3 +512,6 @@ body:not(.jvault-auth-ready) #auth{visibility:hidden}
 #groupFilesView,#groupMembersView{padding:28px clamp(18px,4vw,56px);overflow:auto}
 .group-subpage-heading{margin:0 0 20px}
 @media(max-width:760px){.group-workspace-page{height:calc(100dvh - 60px);min-height:360px}.content:has(#groupWorkspacePage.active){height:calc(100dvh - 60px)}.group-workspace-layout{grid-template-columns:64px minmax(0,1fr)}.group-section-nav{gap:6px;padding:14px 6px}.group-nav-label{padding:0 0 10px;text-align:center;font-size:7px;letter-spacing:.4px}.group-section-nav button{justify-content:center;gap:0;padding:13px 4px;font-size:0}.group-section-nav button>span{font-size:17px}.group-section-nav .group-back-button{font-size:0}.group-messages{padding:16px 12px}.group-message-content{max-width:88%}.group-chat-header{padding:6px 12px}.group-message-composer{gap:7px;padding:9px 9px max(10px,env(safe-area-inset-bottom))}#groupFilesView,#groupMembersView{padding:18px 12px}.top-actions{gap:7px}.group-top-avatar{width:25px;height:25px;font-size:9px}}
+
+#crumbCurrent{display:inline-block;max-width:clamp(90px,32vw,360px);overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+@media(max-width:760px){.group-section-nav .group-back-button{position:relative;font-size:0}.group-section-nav .group-back-button:before{content:"←";font-size:16px}}
