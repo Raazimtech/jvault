@@ -8,6 +8,13 @@ if (!(Uint8Array as any).fromBase64) {
     return Uint8Array.from(binary, character => character.charCodeAt(0));
   };
 }
+if (!(Uint8Array.prototype as any).toBase64) {
+  (Uint8Array.prototype as any).toBase64 = function() {
+    let binary = "";
+    for (let i = 0; i < this.length; i++) binary += String.fromCharCode(this[i]);
+    return btoa(binary);
+  };
+}
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
