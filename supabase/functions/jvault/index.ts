@@ -458,12 +458,14 @@ Deno.serve(async (request: Request) => {
   }
   if (route === "push-dispatch" && request.method === "POST") {
     try {
-      const config = await getPushConfig();
+      const { data: systemConfig, error: systemConfigError } = await admin.from("jvault_system_config").select("dispatch_secret").eq("id", 1).single();
+      if (systemConfigError || !systemConfig) return json({ error: "Maintenance service is not configured." }, 503);
       const supplied = request.headers.get("x-jvault-dispatch") || "";
-      const a = new TextEncoder().encode(supplied), b = new TextEncoder().encode(config.dispatch_secret);
+      const a = new TextEncoder().encode(supplied), b = new TextEncoder().encode(systemConfig.dispatch_secret);
       let mismatch = a.length ^ b.length;
       for (let i = 0; i < Math.max(a.length, b.length); i++) mismatch |= (a[i] || 0) ^ (b[i] || 0);
       if (mismatch !== 0) return json({ error: "Unauthorized." }, 401);
+      const config = await getPushConfig();
       const now = new Date();
 
       const warningLimit = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
