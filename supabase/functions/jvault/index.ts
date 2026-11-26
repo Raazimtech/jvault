@@ -19,7 +19,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@ae5a105f8e1165f967970499f1584dd35dc7ffab/";
+const SOURCE = "https://cdn.jsdelivr.net/gh/Raazimtech/jvault@59473fa9877e4e2418889c9a75c80f172ea638ab/";
 const APP_ORIGIN = new URL(SUPABASE_URL).origin;
 const ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
@@ -56,7 +56,12 @@ async function serveSite(): Promise<Response> {
   const response = await fetch(SOURCE + "index.html", { headers: { "Cache-Control": "no-cache" } });
   if (!response.ok) return new Response("JVault frontend could not be loaded from its repository.", { status: 503 });
   let html = await response.text();
-  html = html.replace(/href=["\']\.\/style\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/style.css?v=${sourceSha}"').replace(/src=["\']\.\/app\.js(?:\?[^"\']*)?["\']/i, 'src="' + SUPABASE_URL + '/functions/v1/jvault/app.js?v=${sourceSha}"').replace(/href=["\']\.\/manifest\.webmanifest["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/manifest.webmanifest"').replace(/href=["\']\.\/icon\.svg["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
+  html = html
+    .replace(/href=["\']\.\/design-system\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/design-system.css?v=59473fa9877e4e2418889c9a75c80f172ea638ab"')
+    .replace(/href=["\']\.\/style\.css(?:\?[^"\']*)?["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/style.css?v=59473fa9877e4e2418889c9a75c80f172ea638ab"')
+    .replace(/src=["\']\.\/app\.js(?:\?[^"\']*)?["\']/i, 'src="' + SUPABASE_URL + '/functions/v1/jvault/app.js?v=59473fa9877e4e2418889c9a75c80f172ea638ab"')
+    .replace(/href=["\']\.\/manifest\.webmanifest["\']/i, 'href="' + SUPABASE_URL + '/functions/v1/jvault/manifest.webmanifest"')
+    .replace(/href=["\']\.\/icon\.svg["\']/gi, 'href="' + SUPABASE_URL + '/functions/v1/jvault/icon.svg"');
   return new Response(html, { headers: {
     ...securityHeaders,
     ...cors,
@@ -281,7 +286,26 @@ Deno.serve(async (request: Request) => {
       console.error("login rate record:", recordError);
       return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
     }
-    if (!succeeded) return json({ error: "Incorrect username or password." }, 401);
+    if (!succeeded) {
+      const { data: postRateRows, error: postRateError } = await admin.rpc("jvault_login_rate_check", {
+        p_pair_key: pairKey,
+        p_account_key: accountKey
+      });
+      if (postRateError) {
+        console.error("post-login rate check:", postRateError);
+        return json({ error: "Sign-in is temporarily unavailable. Try again shortly." }, 503);
+      }
+      const postRate = Array.isArray(postRateRows) ? postRateRows[0] : postRateRows;
+      if (!postRate || postRate.allowed !== true) {
+        const retry = Math.max(1, Math.min(900, Number(postRate?.retry_after_seconds) || 900));
+        return json(
+          { error: "Too many unsuccessful attempts. Sign-in is locked for 15 minutes.", retryAfter: retry },
+          429,
+          { "Retry-After": String(retry) }
+        );
+      }
+      return json({ error: "Incorrect username or password." }, 401);
+    }
 
     return json({
       access_token: authPayload.access_token,
@@ -330,15 +354,18 @@ Deno.serve(async (request: Request) => {
     if (action !== "create") return json({ error: "Unknown user-management action." }, 400);
     const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
-    if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Username must be 3–24 letters, numbers, or underscores." }, 400);
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ error: "Student ID must be 3–24 letters, numbers, or underscores." }, 400);
     if (password.length < 12 || password.length > 128) return json({ error: "Password must be 12–128 characters." }, 400);
+    const { data: duplicate, error: duplicateError } = await admin.from("jvault_profiles").select("user_id").ilike("username", username).maybeSingle();
+    if (duplicateError) return json({ error: "Could not verify whether this Student ID is available. Try again." }, 500);
+    if (duplicate) return json({ error: "This Student ID is already registered. Use a unique Student ID." }, 409);
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email: username + "@jvault.invalid", password, email_confirm: true,
       app_metadata: { role: "user" }, user_metadata: { username }
     });
     if (createError || !created.user) return json({ error: createError?.message || "Could not create user." }, 400);
     const { error: profileError } = await admin.from("jvault_profiles").insert({ user_id: created.user.id, username, role: "user" });
-    if (profileError) { await admin.auth.admin.deleteUser(created.user.id); return json({ error: "Could not create the user profile. Username may already exist." }, 409); }
+    if (profileError) { await admin.auth.admin.deleteUser(created.user.id); return json({ error: profileError.code === "23505" ? "This Student ID is already registered. Use a unique Student ID." : "Could not create the user profile." }, profileError.code === "23505" ? 409 : 500); }
     return json({ success: true, user: { user_id: created.user.id, username, role: "user" } }, 201);
   }
   if (route === "groups" && (request.method === "GET" || request.method === "POST")) {
@@ -652,7 +679,7 @@ Deno.serve(async (request: Request) => {
   if (request.method === "GET" && ["style.css", "app.js", "manifest.webmanifest", "icon.svg", "sw.js", "penguin tired.png"].includes(route)) {
     const response = await fetch(SOURCE + encodeURIComponent(route), { headers: { "Cache-Control": "no-cache" } });
     if (!response.ok) return new Response("JVault asset unavailable.", { status: 503, headers: securityHeaders });
-    const contentTypes: Record<string, string> = { "style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "manifest.webmanifest": "application/manifest+json; charset=utf-8", "icon.svg": "image/svg+xml", "sw.js": "text/javascript; charset=utf-8", "penguin tired.png": "image/png" };
+    const contentTypes: Record<string, string> = { "style.css": "text/css; charset=utf-8", "design-system.css": "text/css; charset=utf-8", "police-penguin.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "manifest.webmanifest": "application/manifest+json; charset=utf-8", "icon.svg": "image/svg+xml", "sw.js": "text/javascript; charset=utf-8", "penguin tired.png": "image/png" };
     const headers: Record<string, string> = { ...securityHeaders, ...requestCors, "Content-Type": contentTypes[route], "Cache-Control": route === "sw.js" ? "no-cache" : "public, max-age=3600" };
     if (route === "sw.js") headers["Service-Worker-Allowed"] = "/functions/v1/";
     if (route === "penguin tired.png") {
