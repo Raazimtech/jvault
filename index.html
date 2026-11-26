@@ -7,9 +7,9 @@
 <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20261126-group-workspace-v2"><link rel="stylesheet" href="./police-penguin.css?v=20261122-v3">
+<link rel="stylesheet" href="./style.css?v=20261126-home-files-v1"><link rel="stylesheet" href="./police-penguin.css?v=20261122-v3">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js"></script>
-<script defer src="./police-penguin.js?v=20261122-v3"></script><script defer src="./app.js?v=20261126-group-workspace-v2"></script>
+<script defer src="./police-penguin.js?v=20261122-v3"></script><script defer src="./app.js?v=20261126-home-files-v1"></script>
 </head>
 <body>
 <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -28,7 +28,8 @@
   <a class="brand side-brand" href="#"><span class="brand-mark">J</span><span>jvault</span></a>
   <div class="side-label">WORKSPACE</div>
   <nav class="side-nav" aria-label="Main navigation">
-   <button class="nav-item active" data-view="all"><span class="nav-symbol">▤</span>All files<span id="sf" class="nav-count">0</span></button>
+   <button class="nav-item active" data-page="home"><span class="nav-symbol">⌂</span>Home</button>
+   <button class="nav-item" data-page="files" data-view="all"><span class="nav-symbol">▤</span>Files<span id="sf" class="nav-count">0</span></button>
    <button class="nav-item" data-view="recent"><span class="nav-symbol">◷</span>Recent</button>
    <button class="nav-item" data-view="favorites"><span class="nav-symbol">☆</span>Favorites</button>
    <button class="nav-item" data-view="folders"><span class="nav-symbol">▱</span>Folders</button>
@@ -51,13 +52,11 @@
  <section class="workspace">
   <header class="topbar"><div class="topbar-left"><button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle navigation"><span></span><span></span></button><div class="crumb">JVault <span>/</span><strong id="crumbCurrent">All files</strong></div></div><div class="top-actions"><div class="quick-capture"><input id="quickCapture" placeholder="Quick capture a thought…" aria-label="Quick capture a thought"><button id="quickCaptureBtn" title="Capture a photo" aria-label="Capture a photo">◉</button></div><span id="today" class="today"></span><div id="avatar" class="avatar">J</div><div id="uname" class="user-name">Owner</div></div></header>
   <div class="content">
+   <section id="homePage" class="page-view active"><div class="home-intro"><div class="eyebrow">YOUR PRIVATE SPACE</div><h1>Welcome to JVault<span>.</span></h1><p class="subtitle">Upload a file to keep it safe in your personal vault.</p></div><section class="home-upload-card"><div class="home-upload-icon" aria-hidden="true">↑</div><div class="home-upload-copy"><h2>Upload a file</h2><p>Choose a file from your device. Your uploads will be organized in the Files page.</p></div><label for="uploadGroup" class="home-share-label">Save to</label><select id="uploadGroup"><option value="">Private to me</option></select><button id="upload" class="primary-btn home-select-button" type="button">Select files</button><small class="home-upload-limit">Up to 50 MB per file</small><div id="drop" class="home-drop-target">Or drag and drop files here</div><input id="picker" type="file" multiple hidden><input id="capturePicker" type="file" accept="image/*" capture="environment" hidden></section><section id="uploadProgress" class="upload-progress home-upload-progress hidden"><div class="upload-progress-top"><span id="uploadStatus">Uploading…</span><strong id="uploadPercent">0%</strong></div><div class="upload-progress-track"><span id="uploadProgressFill"></span></div><small id="uploadDetail"></small></section><div class="home-files-link"><div><strong>Your files are kept separate from this page.</strong><span>Open Files to browse, search, organize and download your uploads.</span></div><button type="button" class="secondary-btn" data-open-files>Go to Files →</button></div></section>
    <section id="filesPage" class="page-view active">
     <section id="groupWorkspaceHead" class="group-workspace-head hidden"></section>
-    <div class="welcome-row"><div><div class="eyebrow">YOUR LIBRARY</div><h1 id="pageTitle">All files<span>.</span></h1><p class="subtitle" id="pageSubtitle">A clear view of everything you keep.</p></div><button id="upload" class="primary-btn upload-main">＋ Upload files</button></div>
+    <div class="welcome-row"><div><div class="eyebrow">YOUR LIBRARY</div><h1 id="pageTitle">Files<span>.</span></h1><p class="subtitle" id="pageSubtitle">All your uploaded files, in one place.</p></div></div>
     <section class="stats-grid"><article class="stat-card"><span>FILES STORED</span><strong id="statDocs">0</strong><small>In your private library</small></article><article class="stat-card"><span>FOLDERS</span><strong id="scat">0</strong><small>Your organization</small></article><article class="stat-card"><span>FAVORITES</span><strong id="statFavorites">0</strong><small>Quick access items</small></article></section>
-    <div class="upload-sharing-row"><label for="uploadGroup">Share upload with</label><select id="uploadGroup"><option value="">Private to me</option></select><small>Files shared with a group are visible to its members.</small></div>
-    <section id="drop" class="dropzone"><div class="drop-symbol">↑</div><div><strong>Drop files to add them to your vault</strong><small>Or choose files from your device · 50 MB maximum per file</small></div><span class="drop-hint">DRAG & DROP</span><input id="picker" type="file" multiple hidden><input id="capturePicker" type="file" accept="image/*" capture="environment" hidden></section>
-    <section id="uploadProgress" class="upload-progress hidden"><div class="upload-progress-top"><span id="uploadStatus">Uploading…</span><strong id="uploadPercent">0%</strong></div><div class="upload-progress-track"><span id="uploadProgressFill"></span></div><small id="uploadDetail"></small></section>
     <section class="library-section"><div class="section-heading"><div><div class="eyebrow">LIBRARY</div><h2 id="filesTitle">Your files</h2></div><div class="view-actions"><button id="newFolder" class="secondary-btn">＋ New folder</button><button id="deleteAll" class="quiet-danger">Move all to bin</button></div></div>
      <div class="library-toolbar"><label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="Search files, notes and tags…"></label><select id="filter"><option value="">All categories</option></select><select id="sort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="name">Name A–Z</option><option value="size">Largest first</option></select><select id="layoutMode" aria-label="View layout"><option value="list">List view</option><option value="grid">Grid view</option></select></div>
      <div id="folderCrumb" class="folder-crumb hidden"></div>
