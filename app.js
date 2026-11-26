@@ -216,7 +216,6 @@ function openGroup(groupId){if(!groups.some(g=>g.id===groupId))return;if(groupCh
 function renderGroupWorkspace(){
  const g=currentGroup();
  if(!g){activeGroupId=null;switchPage('groups');return}
- $('groupWorkspaceName').textContent=g.name;
  $('crumbCurrent').textContent=g.name;
  const people=[...(g.created_by===user.id?[{username:profile?.username||'You'}]:[{username:'Admin'}]),...(g.members||[])];
  $('groupTopMembers').innerHTML=people.slice(0,6).map(m=>'<span class="group-top-avatar" title="'+esc(m.username||'Member')+'">'+esc((m.username||'U').slice(0,1).toUpperCase())+'</span>').join('')+(people.length>6?'<span class="group-top-avatar group-top-avatar-more">+'+(people.length-6)+'</span>':'');
