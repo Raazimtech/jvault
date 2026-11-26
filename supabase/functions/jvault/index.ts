@@ -1,5 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateVapidKey, vapidPublicKey, send as sendWebPush } from "jsr:@daaku/webpush@0.2.0";
+if (!(Uint8Array as any).fromBase64) {
+  (Uint8Array as any).fromBase64 = (value: string) => {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(padded);
+    return Uint8Array.from(binary, character => character.charCodeAt(0));
+  };
+}
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AUTH_API_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE_KEY;
