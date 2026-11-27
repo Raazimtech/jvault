@@ -515,3 +515,102 @@ body:not(.jvault-auth-ready) #auth{visibility:hidden}
 
 #crumbCurrent{display:inline-block;max-width:clamp(90px,32vw,360px);overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
 @media(max-width:760px){.group-section-nav .group-back-button{position:relative;font-size:0}.group-section-nav .group-back-button:before{content:"←";font-size:16px}}
+
+
+/* Desktop refinement — unified JVault blue/white workspace */
+@media (min-width:761px){
+ :root{
+  --paper:#f5f8fb;--paper-2:#edf3f7;--surface:#ffffff;--white:#ffffff;
+  --ink:#20384b;--ink-2:#3e5a70;--muted:#71879a;--faint:#94a6b5;
+  --rule:#e2eaf0;--rule-dark:#cbd9e3;--accent:#287fb5;--accent-dark:#206b99;
+  --accent-wash:#eaf3f9;--danger:#ad5555;
+ }
+ html,body{background:#f5f8fb;color:var(--ink)}
+ .app-shell{grid-template-columns:252px minmax(0,1fr);background:#f5f8fb}
+ .sidebar{padding:27px 18px 19px;border-right:1px solid #e0e9f0;background:#fff;color:#294b65}
+ .side-brand{padding:0 9px 38px;color:#294b65}
+ .brand-mark,.side-brand .brand-mark{border-radius:10px;background:#287fb5;color:#fff}
+ .side-label{color:#91a3b1}
+ .nav-item{min-height:42px;border-radius:8px;color:#617b90}
+ .nav-item:hover{border-color:transparent;background:#f2f7fa;color:#315b78}
+ .nav-item.active{border-color:#dceaf3;background:#eaf3f9;color:#236f9f}
+ .nav-symbol{color:#5486a7}
+ .nav-count{border-color:#dce7ef;color:#6e8799}
+ .side-divider{background:#e6edf2}
+ .storage-card{border:1px solid #e2eaf0;border-radius:10px;background:#f8fbfd}
+ .storage-top,.storage-card small{color:#8297a7}
+ .storage-card strong{color:#294b65}
+ .storage-track{background:#e4edf3}.storage-track span{background:#287fb5}
+ .secure-badge{border-top-color:#e6edf2}
+ .secure-badge strong{color:#46657d}.secure-badge small{color:#899ba9}
+ .logout-btn{border-color:#e0e9f0;border-radius:8px;color:#668096}
+ .logout-btn:hover{background:#f3f8fb;color:#315b78}
+ .workspace{background:#f5f8fb}
+ .topbar{height:70px;border-bottom-color:#e2eaf0;background:rgba(255,255,255,.96)}
+ .sidebar-toggle{border-color:#dce7ef;border-radius:8px;background:#fff}
+ .sidebar-toggle span{background:#47667e}
+ .crumb{color:#8296a6}.crumb strong{color:#294b65}
+ .avatar{border:0;background:#e7f1f7;color:#286b96}
+ .user-name{color:#45647b}
+ .content{max-width:1600px;padding:42px clamp(28px,3.6vw,64px) 40px}
+ .eyebrow,.auth-overline{color:#287fb5}
+ .welcome-row h1,.page-intro h1,.home-intro h1{color:#294b65}
+ .welcome-row h1 span,.page-intro h1 span,.home-intro h1 span{color:#287fb5}
+ .home-quick-capture{border:1px solid #dfe9f0;border-left:3px solid #287fb5;border-radius:12px;background:#fff;box-shadow:0 5px 18px #294b6508}
+ .capture-icon{border-radius:9px;background:#eaf3f9;color:#287fb5}
+ .capture-field label{color:#287fb5}
+ .capture-attach,.capture-save,.secondary-btn,.quiet-danger{border-radius:8px}
+ .capture-attach{border-color:#dce7ef;color:#55748b}
+ .capture-save{border-color:#287fb5;background:#287fb5}
+ .capture-save:hover{border-color:#206b99;background:#206b99}
+ .home-upload-card{border:1px dashed #cbdce8;border-radius:12px;background:#fff}
+ .home-upload-icon{border-radius:9px;background:#eaf3f9;color:#287fb5}
+ .home-upload-card select,.library-toolbar select,.reminder-form input,.search-box{border-color:#dce7ef;border-radius:8px;background:#fff}
+ .primary-btn{border-color:#287fb5;border-radius:8px;background:#287fb5}
+ .primary-btn:hover{border-color:#206b99;background:#206b99}
+ .home-files-link{border-color:#e2eaf0}
+ .stats-grid{border-color:#e2eaf0}
+ .stat-card{background:#fff}
+ .stat-card strong{color:#294b65}
+ .library-section{padding:23px;border:1px solid #e2eaf0;border-radius:12px;background:#fff}
+ .section-heading h2{color:#31536d}
+ .file-entry{border-bottom-color:#edf1f4}
+ .file-entry:hover{background:#f6fafc}
+ .file-ext{border-color:#dce7ef;border-radius:8px;background:#f5f9fc;color:#287fb5}
+ .empty{border-color:#d6e3ec;border-radius:10px;background:#fbfdfe}
+ .notes-layout{grid-template-columns:270px minmax(0,1fr);gap:22px}
+ .notes-list{border:1px solid #e2eaf0;border-radius:10px;background:#fff;overflow:hidden}
+ .note-list-item{padding:15px 14px}
+ .note-list-item.active{border-left:3px solid #287fb5;background:#f0f7fb}
+ .note-editor{border-color:#e2eaf0;border-radius:12px;background:#fff}
+ .reminder-form,.activity-list{border-color:#e2eaf0;border-radius:12px;background:#fff}
+ .reminder-item,.activity-row{border-bottom-color:#e8eef3}
+ .groups-page{max-width:1320px}
+ .groups-page-banner{padding:4px 0 28px;border-bottom-color:#e2eaf0}
+ .groups-banner-mark{width:52px;height:52px;border-radius:12px;background:#eaf3f9;color:#287fb5}
+ .groups-page-banner h1{color:#294b65}
+ .group-create-panel{border-color:#e2eaf0;border-radius:12px;background:#fff}
+ .group-workspace-grid{gap:16px;border:0}
+ .group-workspace-card{border:1px solid #e2eaf0;border-radius:12px;background:#fff}
+ .group-workspace-card h2{color:#31536d}
+ .group-open-button{border-radius:8px}
+ .group-workspace-page{height:calc(100dvh - 70px)}
+ .content:has(#groupWorkspacePage.active){height:calc(100dvh - 70px)}
+ .workspace:has(#groupWorkspacePage.active){height:100dvh}
+ .group-workspace-layout{grid-template-columns:220px minmax(0,1fr)}
+ .group-section-nav{padding:26px 16px;border-right-color:#e2eaf0;background:#fff}
+ .group-section-nav button{border-radius:9px;color:#668196}
+ .group-section-nav button.active{background:#eaf3f9;color:#236f9f}
+ .group-section-nav .group-back-button{border-top-color:#e2eaf0}
+ .group-chat-shell{background:#fff}
+ .group-chat-header{padding:17px 28px;border-bottom-color:#e9eff3}
+ .group-chat-header>div{display:block}
+ .group-chat-header h2{color:#31536d}
+ .group-messages{background:#f8fbfd}
+ .group-message-bubble{border-color:#e0e9f0;border-radius:14px;background:#fff;color:#36566e}
+ .group-message-row.own .group-message-bubble{border-color:#d7e8f3;border-radius:14px;background:#eaf4fa;color:#2f5875}
+ .group-message-composer{border-top-color:#e8eef3;background:#fff}
+ .group-message-composer textarea{border-color:#dce7ef;border-radius:10px;background:#f8fbfd;color:#294b65}
+ #groupFilesView,#groupMembersView{padding:32px clamp(28px,4vw,64px)}
+ .app-footer{border-top-color:#e2eaf0}
+}
