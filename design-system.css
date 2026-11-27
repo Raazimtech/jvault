@@ -699,3 +699,14 @@ body:not(.jvault-auth-ready) #auth{visibility:hidden}
  .thead,.file-entry{grid-template-columns:minmax(150px,1.5fr) minmax(90px,.7fr) minmax(130px,.9fr)}
  .file-cat{display:none}
 }
+
+
+/* Desktop shell fix: the mobile scrim must not occupy a desktop grid cell.
+   The scrim is the first child of #app, before the sidebar and workspace. */
+@media (min-width:761px){
+ #app>.sidebar-scrim{display:none!important}
+ #app>.sidebar{grid-column:1;grid-row:1}
+ #app>.workspace{grid-column:2;grid-row:1;min-width:0}
+ #app.sidebar-collapsed>.sidebar{grid-column:1;grid-row:1}
+ #app.sidebar-collapsed>.workspace{grid-column:2;grid-row:1}
+}
